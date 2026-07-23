@@ -8,7 +8,7 @@ namespace Dsw2026Tpi.Domain.Entities
     {
         public Guid UserId { get; init; }
         public string Dni {  get; init; }
-        public string FullName { get; init; }
+        public string? FullName { get; init; }
 
 
         #region Constructor for EF
