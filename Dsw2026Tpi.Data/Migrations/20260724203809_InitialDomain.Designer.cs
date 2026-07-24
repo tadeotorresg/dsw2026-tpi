@@ -9,10 +9,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace Dsw2026Tpi.Data.Migrations.Domain
+namespace Dsw2026Tpi.Data.Migrations
 {
     [DbContext(typeof(Dsw2026TpiDbContext))]
-    [Migration("20260723174609_InitialDomain")]
+    [Migration("20260724203809_InitialDomain")]
     partial class InitialDomain
     {
         /// <inheritdoc />
@@ -176,11 +176,6 @@ namespace Dsw2026Tpi.Data.Migrations.Domain
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
 
                     b.Property<string>("LicenseNumber")
                         .HasMaxLength(50)
