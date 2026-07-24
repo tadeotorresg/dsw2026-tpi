@@ -8,9 +8,9 @@ namespace Dsw2026Tpi.Domain.Entities
     {
         public Guid DoctorId { get; init; }
         public Doctor? Doctor { get; private set; }
-        public int Month {  get; init; }
-        public int Year { get; init; }
-        public int DayOfWeek { get; init; }
+        public byte Month {  get; init; }
+        public short Year { get; init; }
+        public byte DayOfWeek { get; init; }
         public TimeSpan StartTime { get; init; }
         public TimeSpan EndTime { get; init; }
 
@@ -21,7 +21,7 @@ namespace Dsw2026Tpi.Domain.Entities
 #pragma warning restore CS8618
         #endregion
 
-        public AvailabilityRule (Guid doctorId, int month, int year, int dayOfWeek, TimeSpan startTime, TimeSpan endTime, Guid? id = null): base(id)
+        public AvailabilityRule (Guid doctorId, byte month, short year, byte dayOfWeek, TimeSpan startTime, TimeSpan endTime, Guid? id = null): base(id)
         {
             DoctorId = doctorId;
             Month = month;
