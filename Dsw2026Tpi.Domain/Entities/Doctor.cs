@@ -21,4 +21,11 @@ public class Doctor: EntityBase
         LicenseNumber = licenseNumber;
         Speciality = speciality;
     }
+    public void UpdateProfile(string name, string licenseNumber, Speciality speciality)
+    {
+        Name = name;
+        LicenseNumber = licenseNumber;
+        SpecialityId = speciality.Id;
+        Speciality = speciality;
+    }
 }
