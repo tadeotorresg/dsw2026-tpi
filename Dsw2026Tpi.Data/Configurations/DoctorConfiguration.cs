@@ -22,10 +22,6 @@ public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
             .IsUnicode(false)
             .HasMaxLength(50);
 
-        builder.Property(d => d.IsActive)
-            .IsRequired()
-            .HasDefaultValue(true);
-
         builder.HasOne(d => d.Speciality)
             .WithMany()
             .HasForeignKey(d => d.SpecialityId)
