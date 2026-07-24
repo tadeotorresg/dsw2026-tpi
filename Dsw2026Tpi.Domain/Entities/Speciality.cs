@@ -16,4 +16,9 @@ public class Speciality: EntityBase
         Name = name;
         Description = description;
     }
+    public void UpdateDetails(string name, string description)
+    {
+        Name = name;
+        Description = description;
+    }
 }

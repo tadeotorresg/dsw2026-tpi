@@ -13,7 +13,5 @@ namespace Dsw2026Tpi.Application.Interfaces
         Task<SpecialityModel.Response> CreateSpeciality(SpecialityModel.Request Request);
         Task<SpecialityModel.Response> UpdateSpeciality(Guid Id, SpecialityModel.Request Request);
         Task DeleteSpeciality(Guid Id);
-
-
     }
 }
