@@ -10,4 +10,23 @@ public static class ValidationsExtensions
         return !string.IsNullOrWhiteSpace(email) &&
             Regex.IsMatch(email, EmailPattern);
     }
+
+    public static bool IsNameValid(this string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        return value.Length >= 3 && value.Length <= 100;
+    }
+
+    public static bool IsDescriptionValid(this string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        return value.Length >= 10 && value.Length <= 100;
+    }
 }
+
+
+
