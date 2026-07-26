@@ -79,6 +79,15 @@ namespace Dsw2026Tpi.CrossCutting.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Existe un conflicto con la disponibilidad del médico..
+        /// </summary>
+        public static string AVAILABILITY_CONFLICT {
+            get {
+                return ResourceManager.GetString("AVAILABILITY_CONFLICT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to La entidad {0} no se encontró.
         /// </summary>
         public static string ENTITY_NOTFOUND {

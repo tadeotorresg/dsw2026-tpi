@@ -123,6 +123,9 @@
   <data name="AUTHORIZATION_FAILED" xml:space="preserve">
     <value>Se requieren permisos para la operación solicitada</value>
   </data>
+  <data name="AVAILABILITY_CONFLICT" xml:space="preserve">
+    <value>Existe un conflicto con la disponibilidad del médico.</value>
+  </data>
   <data name="ENTITY_NOTFOUND" xml:space="preserve">
     <value>La entidad {0} no se encontró</value>
   </data>
