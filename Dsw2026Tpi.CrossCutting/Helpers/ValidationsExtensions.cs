@@ -26,6 +26,10 @@ public static class ValidationsExtensions
 
         return value.Length >= 10 && value.Length <= 100;
     }
+    public static bool IsLicenseNumberValid(this string? value)
+    {
+        return !string.IsNullOrWhiteSpace(value);
+    }
 }
 
 
