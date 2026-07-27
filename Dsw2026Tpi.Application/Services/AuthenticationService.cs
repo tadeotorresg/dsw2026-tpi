@@ -5,10 +5,10 @@ using Dsw2026Tpi.CrossCutting.Helpers;
 using Dsw2026Tpi.CrossCutting.Identity;
 using Dsw2026Tpi.CrossCutting.Resources;
 using Dsw2026Tpi.Data.Identity;
+using Dsw2026Tpi.Domain.Entities;
+using Dsw2026Tpi.Domain.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
-using Dsw2026Tpi.Domain.Interfaces;
-using Dsw2026Tpi.Domain.Entities;
 
 namespace Dsw2026Tpi.Application.Services;
 
@@ -20,7 +20,7 @@ public class AuthenticationService : IAuthenticationService
     private readonly JwtService _jwtService;
     private readonly ILogger<AuthenticationService> _logger;
     private readonly IPersistence _persistence;
-   
+
     public AuthenticationService(UserManager<ApplicationUser> userManager,
         ISignInService signInManager,
         RoleManager<IdentityRole> roleManager,
@@ -50,7 +50,7 @@ public class AuthenticationService : IAuthenticationService
 
         var role = (await _userManager.GetRolesAsync(user)).FirstOrDefault();
 
-        var token  = _jwtService.GenerateToken(user.UserName!, role);
+        var token = _jwtService.GenerateToken(user.UserName!, role);
 
         return new LoginAdminModel.Response(
             token,
@@ -61,12 +61,12 @@ public class AuthenticationService : IAuthenticationService
     public async Task<LoginPatientModel.Response> LoginPatient(LoginPatientModel.Request request)
     {
         if (!request.Email.IsEmailValid())
-            throw new ValidationException(ErrorCodes.VALIDATION_ERROR,nameof(ErrorCodes.VALIDATION_ERROR))
+            throw new ValidationException("Los datos enviados son inválidos.", ErrorCodes.VALIDATION_ERROR)
                 .WithDetail(nameof(request.Email), "Debe indicar un email válido.");
 
         var dniString = request.Dni.ToString();
         if (request.Dni <= 0 || dniString.Length < 7 || dniString.Length > 8)
-            throw new ValidationException(ErrorCodes.VALIDATION_ERROR, nameof(ErrorCodes.VALIDATION_ERROR))
+            throw new ValidationException("Los datos enviados son inválidos.", ErrorCodes.VALIDATION_ERROR)
                 .WithDetail(nameof(request.Dni), "El DNI debe tener entre 7 y 8 dígitos.");
 
         var patient = await _persistence.First<Patient>(p => p.Dni == dniString);
@@ -86,16 +86,16 @@ public class AuthenticationService : IAuthenticationService
             var userResult = await _userManager.CreateAsync(user);
 
             if (!userResult.Succeeded)
-                throw new ConflictException(ErrorCodes.REGISTER_USER_CONFLICT, nameof(ErrorCodes.REGISTER_USER_CONFLICT))
+                throw new ConflictException("No se pudo registrar el usuario.", ErrorCodes.REGISTER_USER_CONFLICT)
                     .WithDetail(userResult.Errors.Select(e => (e.Code, e.Description)));
 
 
             var rol = await _userManager.AddToRoleAsync(user, Roles.Patient);
 
             if (!rol.Succeeded)
-                throw new ConflictException(ErrorCodes.REGISTER_USER_CONFLICT, nameof(ErrorCodes.REGISTER_USER_CONFLICT))
+                throw new ConflictException("No se pudo asignar el rol Paciente.", ErrorCodes.REGISTER_USER_CONFLICT)
                     .WithDetail(rol.Errors.Select(error => (error.Code, error.Description)));
-        
+
             var userId = Guid.Parse(user.Id);
 
             patient = new Patient(userId, dniString);
@@ -117,15 +117,15 @@ public class AuthenticationService : IAuthenticationService
         var token = _jwtService.GenerateToken(user.UserName!, Roles.Patient);
 
         return new LoginPatientModel.Response(
-            token, 
+            token,
             Roles.Patient
         );
     }
 
-public async Task<RegisterModel.Response> Register(RegisterModel.Request request)
+    public async Task<RegisterModel.Response> Register(RegisterModel.Request request)
     {
-        if (!request.Email.IsEmailValid()) throw new ValidationException(ErrorCodes.REGISTER_USER_INVALID,
-            nameof(ErrorCodes.REGISTER_USER_INVALID));
+        if (!request.Email.IsEmailValid()) throw new ValidationException("Los datos enviados son inválidos.", ErrorCodes.REGISTER_USER_INVALID)
+            .WithDetail(nameof(request.Email), "Debe indicar un email válido.");
 
         var user = new ApplicationUser
         {
@@ -137,10 +137,9 @@ public async Task<RegisterModel.Response> Register(RegisterModel.Request request
 
         var result = await _userManager.CreateAsync(user, request.Password);
 
-        if (!result.Succeeded) throw new ConflictException(nameof(ErrorCodes.REGISTER_USER_CONFLICT),
-            ErrorCodes.REGISTER_USER_CONFLICT)
+        if (!result.Succeeded) throw new ConflictException("No se pudo registrar el usuario.", ErrorCodes.REGISTER_USER_CONFLICT)
                 .WithDetail(result.Errors.Select(e => (e.Code, e.Description)));
-       
+
         _ = await _userManager.AddToRoleAsync(user, Roles.Administrator);
 
         _logger.LogInformation("Usuario registrado: {Email}", request.Email);
