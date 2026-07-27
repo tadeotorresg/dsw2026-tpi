@@ -7,6 +7,8 @@ using Dsw2026Tpi.CrossCutting.Resources;
 using Dsw2026Tpi.Data.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
+using Dsw2026Tpi.Domain.Interfaces;
+using Dsw2026Tpi.Domain.Entities;
 
 namespace Dsw2026Tpi.Application.Services;
 
@@ -17,18 +19,21 @@ public class AuthenticationService : IAuthenticationService
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly JwtService _jwtService;
     private readonly ILogger<AuthenticationService> _logger;
-
+    private readonly IPersistence _persistence;
+   
     public AuthenticationService(UserManager<ApplicationUser> userManager,
         ISignInService signInManager,
         RoleManager<IdentityRole> roleManager,
         JwtService jwtService,
-        ILogger<AuthenticationService> logger)
+        ILogger<AuthenticationService> logger,
+        IPersistence persistence)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _roleManager = roleManager;
         _jwtService = jwtService;
         _logger = logger;
+        _persistence = persistence;
     }
 
     public async Task<LoginAdminModel.Response> LoginAdmin(LoginAdminModel.Request request)
@@ -53,12 +58,71 @@ public class AuthenticationService : IAuthenticationService
         );
     }
 
-    public async Task<LoginPatientModel.Response> LoginPatient(LoginPatientModel.Response request)
+    public async Task<LoginPatientModel.Response> LoginPatient(LoginPatientModel.Request request)
     {
-        throw new NotImplementedException();
+        if (!request.Email.IsEmailValid())
+            throw new ValidationException(ErrorCodes.VALIDATION_ERROR,nameof(ErrorCodes.VALIDATION_ERROR))
+                .WithDetail(nameof(request.Email), "Debe indicar un email válido.");
+
+        var dniString = request.Dni.ToString();
+        if (request.Dni <= 0 || dniString.Length < 7 || dniString.Length > 8)
+            throw new ValidationException(ErrorCodes.VALIDATION_ERROR, nameof(ErrorCodes.VALIDATION_ERROR))
+                .WithDetail(nameof(request.Dni), "El DNI debe tener entre 7 y 8 dígitos.");
+
+        var patient = await _persistence.First<Patient>(p => p.Dni == dniString);
+
+        var user = await _userManager.FindByEmailAsync(request.Email);
+
+        if (user is null && patient is null)
+        {
+            user = new ApplicationUser
+            {
+                UserName = request.Email,
+                Email = request.Email,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            var userResult = await _userManager.CreateAsync(user);
+
+            if (!userResult.Succeeded)
+                throw new ConflictException(ErrorCodes.REGISTER_USER_CONFLICT, nameof(ErrorCodes.REGISTER_USER_CONFLICT))
+                    .WithDetail(userResult.Errors.Select(e => (e.Code, e.Description)));
+
+
+            var rol = await _userManager.AddToRoleAsync(user, Roles.Patient);
+
+            if (!rol.Succeeded)
+                throw new ConflictException(ErrorCodes.REGISTER_USER_CONFLICT, nameof(ErrorCodes.REGISTER_USER_CONFLICT))
+                    .WithDetail(rol.Errors.Select(error => (error.Code, error.Description)));
+        
+            var userId = Guid.Parse(user.Id);
+
+            patient = new Patient(userId, dniString);
+
+            await _persistence.Add(patient);
+        }
+
+        if (user is null || patient is null)
+        {
+            throw new AuthenticationException();
+        }
+        var authenticatedUserId = Guid.Parse(user.Id);
+
+        if (patient.UserId != authenticatedUserId)
+        {
+            throw new AuthenticationException();
+        }
+
+        var token = _jwtService.GenerateToken(user.UserName!, Roles.Patient);
+
+        return new LoginPatientModel.Response(
+            token, 
+            Roles.Patient
+        );
     }
 
-    public async Task<RegisterModel.Response> Register(RegisterModel.Request request)
+public async Task<RegisterModel.Response> Register(RegisterModel.Request request)
     {
         if (!request.Email.IsEmailValid()) throw new ValidationException(ErrorCodes.REGISTER_USER_INVALID,
             nameof(ErrorCodes.REGISTER_USER_INVALID));
