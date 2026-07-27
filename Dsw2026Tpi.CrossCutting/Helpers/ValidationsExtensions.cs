@@ -30,6 +30,17 @@ public static class ValidationsExtensions
     {
         return !string.IsNullOrWhiteSpace(value);
     }
+
+    public static bool IsDniValid (this long dni)
+    {
+        var dniString = dni.ToString();
+        return dni > 0 && dniString.Length >= 7 && dniString.Length <= 8;
+    }
+
+    public static bool IsPasswordValid(this string? password)
+    {
+        return !string.IsNullOrWhiteSpace(password) && password.Length >= 8;
+    }
 }
 
 

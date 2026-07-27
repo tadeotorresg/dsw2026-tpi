@@ -38,7 +38,14 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<LoginAdminModel.Response> LoginAdmin(LoginAdminModel.Request request)
     {
-        if (!request.Email.IsEmailValid()) throw new AuthenticationException();
+        if (!request.Email.IsEmailValid()) throw new ValidationException("Los datos enviados son inválidos.", ErrorCodes.VALIDATION_ERROR)
+                .WithDetail(nameof(request.Email), "Debe indicar un email válido");
+
+
+        if (!request.Password.IsPasswordValid()) throw new ValidationException("Los datos enviados son inválidos.", ErrorCodes.VALIDATION_ERROR)
+                .WithDetail(nameof(request.Password), "La contraseña debe tener al menos 8 caracteres.");
+
+
         var user = await _userManager.FindByEmailAsync(request.Email) ?? throw new AuthenticationException();
         var result = await _signInManager.CheckPassword(user, request.Password);
 
@@ -50,7 +57,14 @@ public class AuthenticationService : IAuthenticationService
 
         var role = (await _userManager.GetRolesAsync(user)).FirstOrDefault();
 
+        if (role != Roles.Administrator)
+        {
+            throw new AuthenticationException();
+        }
+
         var token = _jwtService.GenerateToken(user.UserName!, role);
+
+        _logger.LogInformation("Inicio de sesion de administrador exitoso: {Email}", request.Email);
 
         return new LoginAdminModel.Response(
             token,
@@ -65,7 +79,7 @@ public class AuthenticationService : IAuthenticationService
                 .WithDetail(nameof(request.Email), "Debe indicar un email válido.");
 
         var dniString = request.Dni.ToString();
-        if (request.Dni <= 0 || dniString.Length < 7 || dniString.Length > 8)
+        if (!request.Dni.IsDniValid())
             throw new ValidationException("Los datos enviados son inválidos.", ErrorCodes.VALIDATION_ERROR)
                 .WithDetail(nameof(request.Dni), "El DNI debe tener entre 7 y 8 dígitos.");
 
@@ -115,6 +129,8 @@ public class AuthenticationService : IAuthenticationService
         }
 
         var token = _jwtService.GenerateToken(user.UserName!, Roles.Patient);
+
+        _logger.LogInformation("Inicio de sesion de paciente exitoso: {Email}", request.Email);
 
         return new LoginPatientModel.Response(
             token,
