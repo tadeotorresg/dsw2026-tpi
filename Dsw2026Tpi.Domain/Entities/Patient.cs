@@ -17,7 +17,7 @@ namespace Dsw2026Tpi.Domain.Entities
 #pragma warning restore CS8618
         #endregion
 
-        public Patient (Guid userId, string dni, string fullName)
+        public Patient (Guid userId, string dni, string? fullName = null)
         {
             UserId = userId;
             Dni = dni;
