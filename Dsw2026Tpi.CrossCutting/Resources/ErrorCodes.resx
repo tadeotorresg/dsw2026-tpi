@@ -135,6 +135,9 @@
   <data name="REGISTER_USER_INVALID" xml:space="preserve">
     <value>Datos de registración de usuario no válidos</value>
   </data>
+  <data name="INVALID_STATUS" xml:space="preserve">
+    <value>La operación no se puede realizar porque el turno no se encuentra en un estado válido.</value>
+  </data>
   <data name="UNHANDLED_ERROR" xml:space="preserve">
     <value>Se produjo un error no controlado</value>
   </data>
