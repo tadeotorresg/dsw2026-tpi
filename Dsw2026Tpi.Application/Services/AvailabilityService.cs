@@ -32,9 +32,8 @@ namespace Dsw2026Tpi.Application.Services
             var existingRules = await _persistence.GetFiltered<AvailabilityRule>
                 (r => r.DoctorId == request.DoctorId && r.Month == month && r.Year == year && r.Deleted == false);
             if (existingRules != null)
-            {
                 CheckOverlaps(request.Days, existingRules);
-            }
+            
             foreach (var dayReq in request.Days)
             {
                 var dayOfWeek = ParseDayOfWeek(dayReq.Day);
@@ -42,9 +41,7 @@ namespace Dsw2026Tpi.Application.Services
                 GenerateSlotsForRestOfMonth(rule, today);
 
                 if (rule.Slots.Any())
-                {
-                    await _persistence.Add(rule);
-                }
+                    await _persistence.Add(rule);     
             }
         }
 
@@ -89,24 +86,27 @@ namespace Dsw2026Tpi.Application.Services
 
                 GenerateSlotsForRestOfMonth(rule, today);
 
-                if (rule.Slots.Any())
-                {
+                if (rule.Slots.Any()) 
                     await _persistence.Add(rule);
-                }
             }
         }
 
         #region Private Methods
         private void ValidateDays(List<AvailabilityModel.DayRequest> days)
         {
-            if (days == null) throw new ValidationException("Los datos enviads son invalidos", ErrorCodes.VALIDATION_ERROR).WithDetail(nameof(days), "Debe enviar al menos un dia");
+            if (days == null || days.Count == 0) 
+                throw new ValidationException()
+                    .WithDetail(nameof(days), "Debe enviar al menos un dia.");
 
             foreach (var day in days)
             {
-                if (day.StartTime >= day.EndTime)
-                    throw new ValidationException("Los datos enviados son invalidos", ErrorCodes.VALIDATION_ERROR).WithDetail(nameof(day.StartTime), "La hora de inicio debe ser menor que la de fin");
-                if ((day.EndTime - day.StartTime).TotalMinutes < 30)
-                        throw new ValidationException("Los datos enviados son invalidos", ErrorCodes.VALIDATION_ERROR).WithDetail(nameof(day.EndTime), "El intervalo debe ser de al menos 30 minutos");
+                if (day.StartTime >= day.EndTime) 
+                    throw new ValidationException()
+                        .WithDetail(nameof(day.StartTime), "La hora de inicio debe ser menor que la de fin.");
+                
+                if ((day.EndTime - day.StartTime).TotalMinutes < 30) 
+                    throw new ValidationException()
+                        .WithDetail(nameof(day.EndTime), "El intervalo debe ser de al menos 30 minutos.");
             }
             var grouped = days.GroupBy(d => d.Day.ToUpper());
             foreach (var group in grouped)
@@ -115,7 +115,8 @@ namespace Dsw2026Tpi.Application.Services
                 for (int i = 0; i < ordered.Count - 1; i++)
                 {
                     if (ordered[i].EndTime > ordered[i + 1].StartTime)
-                        throw new ConflictException("CONFLICT_ERROR", $"Se detectó un solapamiento de horarios en la solicitud para el día {ordered[i].Day}.");
+                        throw new ConflictException(ErrorCodes.AVAILABILITY_CONFLICT, nameof(ErrorCodes.AVAILABILITY_CONFLICT))
+                            .WithDetail(nameof(AvailabilityModel.DayRequest.Day), $"Se detectó un solapamiento de horarios para el día {ordered[i].Day}.");
                 }
             }
         }
@@ -129,10 +130,8 @@ namespace Dsw2026Tpi.Application.Services
                 foreach (var rule in ruleOverlaps)
                 {
                     if (req.StartTime < rule.EndTime && req.EndTime > rule.StartTime)
-                    {
-                        throw new ConflictException("La disponibilidad entra en conflicto con una existente.",ErrorCodes.AVAILABILITY_CONFLICT).WithDetail(nameof(req.Day),
-                        $"Ya existe una disponibilidad para el día {req.Day} que se superpone con el horario solicitado.");
-                    }
+                        throw new ConflictException(ErrorCodes.AVAILABILITY_CONFLICT, nameof(ErrorCodes.AVAILABILITY_CONFLICT))
+                            .WithDetail(nameof(req.Day), $"Ya existe una disponibilidad para el día {req.Day} en el horario solicitado.");
                 }
             }
         }
@@ -171,18 +170,17 @@ namespace Dsw2026Tpi.Application.Services
                 "VIERNES" => DayOfWeek.Friday,
                 "SABADO" => DayOfWeek.Saturday,
                 "DOMINGO" => DayOfWeek.Sunday,
-                _ => throw new ValidationException("Los datos enviados son inválidos", ErrorCodes.VALIDATION_ERROR).WithDetail(nameof(day), "El día no es válido")
+                _ => throw new ValidationException()
+                        .WithDetail(nameof(day), "El día no es válido.")
             };
         }
 
         private async Task <Doctor> ValidateDoctor (Guid doctorId)
         {
-            if (doctorId == Guid.Empty)
-            {
-                throw new ValidationException("Los datos enviados son inválidos.",ErrorCodes.VALIDATION_ERROR) .WithDetail("DoctorId",
-            "Debe indicar un DoctorId válido.");
-            }
-
+            if (doctorId == Guid.Empty )
+                throw new ValidationException() 
+                    .WithDetail(nameof(doctorId), "Debe indicar un DoctorId válido.");
+            
             return await _persistence.GetById<Doctor>(doctorId)
                 ?? throw new EntityNotFoundException(nameof(Doctor));
         }

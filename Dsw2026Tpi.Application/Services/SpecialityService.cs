@@ -22,11 +22,11 @@ namespace Dsw2026Tpi.Application.Services
         public async Task<SpecialityModel.Response> CreateSpeciality(SpecialityModel.Request request)
         { 
             if (!request.Name.IsNameValid())
-                throw new ValidationException(ErrorCodes.VALIDATION_ERROR, nameof(ErrorCodes.VALIDATION_ERROR))
+                throw new ValidationException()
                     .WithDetail(nameof(request.Name), "Nombre inválido, entre 3 y 100 caracteres.");
 
             if (!request.Description.IsDescriptionValid())
-                throw new ValidationException(ErrorCodes.VALIDATION_ERROR, nameof(ErrorCodes.VALIDATION_ERROR))
+                throw new ValidationException()
                     .WithDetail(nameof(request.Description), "Descripción inválida, entre 10 y 100 caracteres.");
 
             
@@ -44,10 +44,9 @@ namespace Dsw2026Tpi.Application.Services
         public async Task<Pagination<SpecialityModel.Response>> GetAllSpeciality(int pageSize, int pageIndex, string? name = null)
         {
             if (!string.IsNullOrWhiteSpace(name) && !name.IsNameValid())
-            {
-                throw new ValidationException(ErrorCodes.VALIDATION_ERROR, nameof(ErrorCodes.VALIDATION_ERROR))
+                throw new ValidationException()
                     .WithDetail(nameof(name), "El filtro por nombre debe tener entre 3 y 100 caracteres.");
-            }
+            
             var specialities = await _persistence.Paginate<Speciality, string>(
                 pageSize,
                 pageIndex,
@@ -63,11 +62,11 @@ namespace Dsw2026Tpi.Application.Services
         {
 
             if (!request.Name.IsNameValid())
-                throw new ValidationException(ErrorCodes.VALIDATION_ERROR, nameof(ErrorCodes.VALIDATION_ERROR))
+                throw new ValidationException()
                     .WithDetail(nameof(request.Name), "El nombre es inválido. El campo debe tener entre 3 y 100 caracteres.");
 
             if (!request.Description.IsDescriptionValid())
-                throw new ValidationException(ErrorCodes.VALIDATION_ERROR, nameof(ErrorCodes.VALIDATION_ERROR))
+                throw new ValidationException()
                     .WithDetail(nameof(request.Description), "La descripción es inválida. El campo debe tener entre 10 y 100 caracteres.");
 
             var speciality = await _persistence.GetById<Speciality>(id)
@@ -84,16 +83,7 @@ namespace Dsw2026Tpi.Application.Services
                 speciality.Description
             );
         }
-
         public async Task DeleteSpeciality(Guid id)
-        {
-            var speciality = await _persistence.GetById<Speciality>(id)
-                             ?? throw new EntityNotFoundException(nameof(Speciality));
-
-            await _persistence.Delete(speciality);
-        }
-
-       /* public async Task DeleteSpeciality(Guid id)
         {
            var speciality = await _persistence.GetById<Speciality>(id)
                             ?? throw new EntityNotFoundException(nameof(Speciality));
@@ -103,6 +93,5 @@ namespace Dsw2026Tpi.Application.Services
 
             await _persistence.Update(speciality);
         }
-    */
     }
 }
