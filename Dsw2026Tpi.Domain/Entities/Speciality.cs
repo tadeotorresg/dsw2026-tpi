@@ -1,6 +1,6 @@
 ﻿namespace Dsw2026Tpi.Domain.Entities;
 
-public class Speciality: EntityBase
+public class Speciality : SoftDeletableEntity
 {
     public string Name { get; private set; }
     public string Description { get; private set; }

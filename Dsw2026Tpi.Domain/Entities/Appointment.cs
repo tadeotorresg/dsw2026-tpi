@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Dsw2026Tpi.Domain.Entities
 {
-    public class Appointment: EntityBase
+    public class Appointment : EntityBase
     {
         public Guid AvailabilitySlotId { get; init; }
         public AvailabilitySlot? AvailabilitySlot { get; private set; }

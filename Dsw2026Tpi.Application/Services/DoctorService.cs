@@ -28,12 +28,10 @@ public class DoctorService : IDoctorService
 
     public async Task<IEnumerable<AvailabilityModel.Response>> GetAvailabilities(Guid doctorId)
     {
-        if (doctorId == Guid.Empty)
-        {
-            throw new ValidationException("Los datos enviados son inválidos.",ErrorCodes.VALIDATION_ERROR)
+        if (doctorId == Guid.Empty) 
+            throw new ValidationException()
                 .WithDetail(nameof(doctorId), "Debe indicar un DoctorId válido.");
-        }
-
+        
         var doctor = await _persistence.GetById<Doctor>(doctorId)
                  ?? throw new EntityNotFoundException(nameof(Doctor));
 
@@ -50,34 +48,20 @@ public class DoctorService : IDoctorService
 
         return availabilityRules
             .OrderBy(a => a.DayOfWeek == 0 ? 7 : a.DayOfWeek)
-            .Select(a => new AvailabilityModel.Response(GetDayName(a.DayOfWeek),
+            .Select(a => new AvailabilityModel.Response(DayOfWeekConverter.GetDayName(a.DayOfWeek),
                 a.StartTime.ToString(@"hh\:mm"),
                 a.EndTime.ToString(@"hh\:mm"))
             )
             .ToList();
     }
-    private static string GetDayName(byte dayOfWeek)
-    {
-        return dayOfWeek switch
-        {
-            1 => "LUNES",
-            2 => "MARTES",
-            3 => "MIÉRCOLES",
-            4 => "JUEVES",
-            5 => "VIERNES",
-            6 => "SÁBADO",
-            0 => "DOMINGO",
-            _ => string.Empty
-        };
-    }
     public async Task<DoctorModel.Response> CreateDoctor (DoctorModel.Request request)
     {
         if (!request.Name.IsNameValid())
-            throw new ValidationException("Los datos enviados son inválidos.",ErrorCodes.VALIDATION_ERROR)
+            throw new ValidationException()
                 .WithDetail(nameof(request.Name), "El nombre debe tener entre 3 y 100 caracteres.");
 
         if (!request.LicenseNumber.IsLicenseNumberValid())
-            throw new ValidationException("Los datos enviados son inválidos.", ErrorCodes.VALIDATION_ERROR)
+            throw new ValidationException()
                 .WithDetail(nameof(request.LicenseNumber),"Debe indicar un número de matrícula.");     
         
         var speciality = await _persistence.GetById<Speciality>(request.SpecialityId)
@@ -94,8 +78,12 @@ public class DoctorService : IDoctorService
     public async Task<DoctorModel.Response> UpdateDoctor (Guid id, DoctorModel.Request request)
     {
         if (!request.Name.IsNameValid())
-            throw new ValidationException("Los datos enviados son inválidos.", ErrorCodes.VALIDATION_ERROR)
+            throw new ValidationException()
                 .WithDetail(nameof(request.Name), "El nombre debe tener entre 3 y 100 caracteres.");
+
+        if (string.IsNullOrWhiteSpace(request.LicenseNumber))
+            throw new ValidationException()
+                .WithDetail(nameof(request.LicenseNumber),"La matrícula es obligatoria.");
         
         var speciality = await _persistence.GetById<Speciality>(request.SpecialityId)
             ?? throw new EntityNotFoundException(nameof(Speciality));
