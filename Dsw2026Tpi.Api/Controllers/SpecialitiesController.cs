@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Dsw2026Tpi.Api.Controllers;
 
-[Route("specialities")]
+[Route("api/specialities")]
 [Authorize(Policy = Policies.AdminPolicy)]
 public class SpecialitiesController : AppController
 {

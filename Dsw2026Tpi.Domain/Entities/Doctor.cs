@@ -6,7 +6,7 @@ public class Doctor : SoftDeletableEntity
     public string? LicenseNumber { get; private set; }
     public Guid? SpecialityId { get; private set; }
     public Speciality? Speciality { get; private set; }
-
+    public bool IsActive { get; private set; } = true;
     #region Constructor for EF
 #pragma warning disable CS8618
     private Doctor()
@@ -28,4 +28,9 @@ public class Doctor : SoftDeletableEntity
         SpecialityId = speciality.Id;
         Speciality = speciality;
     }
+
+    /* public void ChangeActiveStatus(bool isActive)
+    {
+        IsActive = isActive;
+    } */
 }

@@ -1,7 +1,6 @@
 ﻿using Dsw2026Tpi.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System.Numerics;
 
 namespace Dsw2026Tpi.Data.Configurations;
 
@@ -21,6 +20,10 @@ public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
         builder.Property(d => d.LicenseNumber)
             .IsUnicode(false)
             .HasMaxLength(50);
+
+        builder.Property(d => d.IsActive)
+            .IsRequired()
+            .HasDefaultValue(true);
 
         builder.HasOne(d => d.Speciality)
             .WithMany()

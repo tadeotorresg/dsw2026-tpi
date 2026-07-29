@@ -29,8 +29,7 @@
 
         public ICollection<AvailabilitySlot> Slots { get; private set; } = new List<AvailabilitySlot>();
 
-        private static readonly TimeSpan SlotDuration =
-    TimeSpan.FromMinutes(30);
+        private static readonly TimeSpan SlotDuration = TimeSpan.FromMinutes(30);
 
         public void GenerateSlotsForRestOfMonth(DateTime fromDate)
         {
