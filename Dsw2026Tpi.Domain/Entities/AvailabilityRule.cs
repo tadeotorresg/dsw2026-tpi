@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Dsw2026Tpi.Domain.Entities
+﻿namespace Dsw2026Tpi.Domain.Entities
 {
-    public class AvailabilityRule: EntityBase
+    public class AvailabilityRule: SoftDeletableEntity
     {
         public Guid DoctorId { get; init; }
         public Doctor? Doctor { get; private set; }
@@ -32,5 +28,32 @@ namespace Dsw2026Tpi.Domain.Entities
         }
 
         public ICollection<AvailabilitySlot> Slots { get; private set; } = new List<AvailabilitySlot>();
+
+        private static readonly TimeSpan SlotDuration =
+    TimeSpan.FromMinutes(30);
+
+        public void GenerateSlotsForRestOfMonth(DateTime fromDate)
+        {
+            var daysInMonth = DateTime.DaysInMonth(Year, Month);
+
+            for (var day = fromDate.Day; day <= daysInMonth; day++)
+            {
+                var date = new DateTime(Year, Month, day);
+
+                if ((byte)date.DayOfWeek != DayOfWeek)
+                    continue;
+
+                var currentTime = StartTime;
+
+                while (currentTime.Add(SlotDuration) <= EndTime)
+                {
+                    var slotEndTime = currentTime.Add(SlotDuration);
+
+                    Slots.Add(new AvailabilitySlot(Id, date, currentTime, slotEndTime));
+
+                    currentTime = slotEndTime;
+                }
+            }
+        }
     }
 }

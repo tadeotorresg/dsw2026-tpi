@@ -19,7 +19,7 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
 
         builder.HasIndex(a => a.AvailabilitySlotId)
             .IsUnique()
-            .HasFilter("[Status] = 'BOOKED' AND [Deleted] = 0");
+            .HasFilter("[Status] = 'BOOKED'");
 
         builder.HasOne(a => a.Patient)
             .WithMany()
@@ -40,9 +40,5 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
         builder.Property(appointment => appointment.AttendedAt);
         builder.Property(appointment => appointment.CreatedAt);
         builder.Property(appointment => appointment.UpdatedAt);
-
-        builder.Property(appointment => appointment.Deleted)
-            .HasDefaultValue(false);
-        builder.HasQueryFilter(appointment => !appointment.Deleted);
     }
 }

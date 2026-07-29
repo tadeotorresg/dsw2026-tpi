@@ -28,7 +28,6 @@ namespace Dsw2026Tpi.Application.Services
             if (!request.Description.IsDescriptionValid())
                 throw new ValidationException()
                     .WithDetail(nameof(request.Description), "Descripción inválida, entre 10 y 100 caracteres.");
-
             
             var speciality = new Speciality(request.Name, request.Description);
 

@@ -48,25 +48,11 @@ public class DoctorService : IDoctorService
 
         return availabilityRules
             .OrderBy(a => a.DayOfWeek == 0 ? 7 : a.DayOfWeek)
-            .Select(a => new AvailabilityModel.Response(GetDayName(a.DayOfWeek),
+            .Select(a => new AvailabilityModel.Response(DayOfWeekConverter.GetDayName(a.DayOfWeek),
                 a.StartTime.ToString(@"hh\:mm"),
                 a.EndTime.ToString(@"hh\:mm"))
             )
             .ToList();
-    }
-    private static string GetDayName(byte dayOfWeek)
-    {
-        return dayOfWeek switch
-        {
-            1 => "LUNES",
-            2 => "MARTES",
-            3 => "MIÉRCOLES",
-            4 => "JUEVES",
-            5 => "VIERNES",
-            6 => "SÁBADO",
-            0 => "DOMINGO",
-            _ => string.Empty
-        };
     }
     public async Task<DoctorModel.Response> CreateDoctor (DoctorModel.Request request)
     {

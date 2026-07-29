@@ -1,13 +1,10 @@
 ﻿using Dsw2026Tpi.Application.Dtos;
 using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.CrossCutting.Exceptions;
+using Dsw2026Tpi.CrossCutting.Helpers;
 using Dsw2026Tpi.CrossCutting.Resources;
 using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Runtime.Serialization.Formatters;
-using System.Text;
 
 namespace Dsw2026Tpi.Application.Services
 {
@@ -36,9 +33,9 @@ namespace Dsw2026Tpi.Application.Services
             
             foreach (var dayReq in request.Days)
             {
-                var dayOfWeek = ParseDayOfWeek(dayReq.Day);
+                var dayOfWeek = DayOfWeekConverter.Parse(dayReq.Day);
                 var rule = new AvailabilityRule(request.DoctorId, month, year, (byte)dayOfWeek, dayReq.StartTime, dayReq.EndTime);
-                GenerateSlotsForRestOfMonth(rule, today);
+                rule.GenerateSlotsForRestOfMonth(today);
 
                 if (rule.Slots.Any())
                     await _persistence.Add(rule);     
@@ -81,10 +78,10 @@ namespace Dsw2026Tpi.Application.Services
 
             foreach (var dayReq in request.Days)
             {
-                var dayOfWeek = ParseDayOfWeek(dayReq.Day);
+                var dayOfWeek = DayOfWeekConverter.Parse(dayReq.Day);
                 var rule = new AvailabilityRule(request.DoctorId, month, year, (byte)dayOfWeek, dayReq.StartTime, dayReq.EndTime);
 
-                GenerateSlotsForRestOfMonth(rule, today);
+                rule.GenerateSlotsForRestOfMonth(today);
 
                 if (rule.Slots.Any()) 
                     await _persistence.Add(rule);
@@ -124,7 +121,7 @@ namespace Dsw2026Tpi.Application.Services
         {
             foreach (var req in requests)
             {
-                var parsedDay = (byte)ParseDayOfWeek(req.Day);
+                var parsedDay = (byte)DayOfWeekConverter.Parse(req.Day);
                 var ruleOverlaps = existingRules.Where(r => r.DayOfWeek == parsedDay);
 
                 foreach (var rule in ruleOverlaps)
@@ -135,46 +132,6 @@ namespace Dsw2026Tpi.Application.Services
                 }
             }
         }
-
-        private void GenerateSlotsForRestOfMonth(AvailabilityRule rule, DateTime today)
-        {
-            int daysInMonth = DateTime.DaysInMonth(today.Year, today.Month);
-
-            for (int day = today.Day; day <= daysInMonth; day++)
-            {
-                var date = new DateTime(today.Year, today.Month, day);
-
-                if ((int)date.DayOfWeek == rule.DayOfWeek)
-                {
-                    var currentTime = rule.StartTime;
-
-                    // Bloques estables de 30 minutos
-                    while (currentTime.Add(TimeSpan.FromMinutes(30)) <= rule.EndTime)
-                    {
-                        var slot = new AvailabilitySlot(rule.Id, date, currentTime, currentTime.Add(TimeSpan.FromMinutes(30)));
-                        rule.Slots.Add(slot);
-                        currentTime = currentTime.Add(TimeSpan.FromMinutes(30));
-                    }
-                }
-            }
-        }
-
-        private DayOfWeek ParseDayOfWeek (string day)
-        {
-            return day.Trim().ToUpper() switch
-            {
-                "LUNES" => DayOfWeek.Monday,
-                "MARTES" => DayOfWeek.Tuesday,
-                "MIERCOLES" => DayOfWeek.Wednesday,
-                "JUEVES" => DayOfWeek.Thursday,
-                "VIERNES" => DayOfWeek.Friday,
-                "SABADO" => DayOfWeek.Saturday,
-                "DOMINGO" => DayOfWeek.Sunday,
-                _ => throw new ValidationException()
-                        .WithDetail(nameof(day), "El día no es válido.")
-            };
-        }
-
         private async Task <Doctor> ValidateDoctor (Guid doctorId)
         {
             if (doctorId == Guid.Empty )

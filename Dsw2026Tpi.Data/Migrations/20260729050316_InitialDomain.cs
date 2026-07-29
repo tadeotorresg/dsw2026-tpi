@@ -130,8 +130,7 @@ namespace Dsw2026Tpi.Data.Migrations
                     CancelledAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     AttendedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Deleted = table.Column<bool>(type: "bit", nullable: false, defaultValue: false)
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -155,7 +154,7 @@ namespace Dsw2026Tpi.Data.Migrations
                 table: "Appointments",
                 column: "AvailabilitySlotId",
                 unique: true,
-                filter: "[Status] = 'BOOKED' AND [Deleted] = 0");
+                filter: "[Status] = 'BOOKED'");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Appointments_PatientId",

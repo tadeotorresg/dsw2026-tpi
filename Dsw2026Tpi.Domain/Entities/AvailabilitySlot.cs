@@ -1,12 +1,8 @@
 ﻿using Dsw2026Tpi.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Text;
 
 namespace Dsw2026Tpi.Domain.Entities
 {
-    public class AvailabilitySlot : EntityBase
+    public class AvailabilitySlot : SoftDeletableEntity
     {
         public Guid AvailabilityRuleId { get; init; }
         public AvailabilityRule? AvailabilityRule { get; private set; }

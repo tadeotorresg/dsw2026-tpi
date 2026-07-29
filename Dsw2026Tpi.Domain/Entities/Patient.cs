@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Dsw2026Tpi.Domain.Entities
+﻿namespace Dsw2026Tpi.Domain.Entities
 {
-    public class Patient: EntityBase
+    public class Patient : SoftDeletableEntity
     {
         public Guid UserId { get; private set; }
         public string Dni {  get; init; }

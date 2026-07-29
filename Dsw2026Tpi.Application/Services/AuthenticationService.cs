@@ -121,15 +121,12 @@ public class AuthenticationService : IAuthenticationService
         }
 
         if (user is null || patient is null)
-        {
             throw new AuthenticationException();
-        }
+  
         var authenticatedUserId = Guid.Parse(user.Id);
 
         if (patient.UserId != authenticatedUserId)
-        {
             throw new AuthenticationException();
-        }
 
         var token = _jwtService.GenerateToken(user.UserName!, Roles.Patient);
 
