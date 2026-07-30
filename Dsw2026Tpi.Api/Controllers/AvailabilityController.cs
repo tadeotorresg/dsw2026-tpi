@@ -21,16 +21,15 @@ namespace Dsw2026Tpi.Api.Controllers;
     [ProducesResponseType(StatusCodes.Status201Created)]
     public async Task<IActionResult> Create([FromBody] AvailabilityModel.Request request)
     {
-        await _service.CreateAvailability(request);
-        return StatusCode(StatusCodes.Status201Created);
+       var response = await _service.CreateAvailability(request);
+       return StatusCode(StatusCodes.Status201Created, response);
     }
 
     [HttpPut]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Update([FromBody] AvailabilityModel.Request request)
     {
-        await _service.UpdateAvailability(request);
-        return Ok();
+        var response = await _service.UpdateAvailability(request);
+        return Ok(response);
     }
-
 }
