@@ -19,8 +19,13 @@ public class DoctorService : IDoctorService
 
     public async Task<Pagination<DoctorModel.Response>> GetAll(int pageSize, int pageIndex, string? name = null)
     {
-        var doctors = await _persistence.Paginate<Doctor, string>(pageSize, pageIndex, d => string.IsNullOrWhiteSpace(name) ||
-                                                   d.Name.Contains(name), x => x.Name, nameof(Doctor.Speciality));
+        if (!string.IsNullOrWhiteSpace(name) && !name.IsNameValid())
+            throw new ValidationException()
+                .WithDetail(nameof(name),"El nombre debe tener entre 3 y 100 caracteres.");
+
+        var doctors = await _persistence.Paginate<Doctor, string>(pageSize, pageIndex, 
+            d => d.IsActive && (string.IsNullOrWhiteSpace(name) ||d.Name.Contains(name)), 
+            d => d.Name, nameof(Doctor.Speciality));
 
         return doctors.Map(d => new DoctorModel.Response(d.Id, d.Name, d.LicenseNumber,
             new DoctorModel.SpecialityDto(d.Speciality?.Id, d.Speciality?.Name)));
@@ -48,7 +53,7 @@ public class DoctorService : IDoctorService
 
         return availabilityRules
             .OrderBy(a => a.DayOfWeek == 0 ? 7 : a.DayOfWeek)
-            .Select(a => new AvailabilityModel.Response(DayOfWeekConverter.GetDayName(a.DayOfWeek),
+            .Select(a => new AvailabilityModel.Response(a.Id, DayOfWeekConverter.GetDayName(a.DayOfWeek),
                 a.StartTime.ToString(@"hh\:mm"),
                 a.EndTime.ToString(@"hh\:mm"))
             )

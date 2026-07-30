@@ -74,7 +74,7 @@ public class PersistenceEf: IPersistence
                     .Take(take)
                     .ToListAsync();
 
-            return new Pagination<T>(pageSize, pageIndex, total, data);
+            return new Pagination<T>(pageSize, pageIndex, data, total);
         }
         
         //la pagina existe
@@ -86,7 +86,7 @@ public class PersistenceEf: IPersistence
         //solo hay una pagina
         if (total < pageSize)
         {
-            return new Pagination<T>(pageSize, pageIndex, total, await filtered.ToListAsync());
+            return new Pagination<T>(pageSize, pageIndex, await filtered.ToListAsync(), total);
         }
 
         var targetPageIndex = pageIndex - 1;
@@ -100,7 +100,7 @@ public class PersistenceEf: IPersistence
 
             targetPageIndex--;
 
-            if (targetPageIndex < 0) return new Pagination<T>(pageSize, 0, 0, []);
+            if (targetPageIndex < 0) return new Pagination<T>(pageSize, 0, [], 0);
         }
     }
 
