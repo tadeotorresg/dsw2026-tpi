@@ -11,7 +11,6 @@ namespace Dsw2026Tpi.Api.Controllers
     public class AppointmentController : AppController 
     {
         private readonly IAppointmentService _appointmentService;
-
         public AppointmentController(IAppointmentService appointmentService)
         {
             _appointmentService = appointmentService;
@@ -20,8 +19,6 @@ namespace Dsw2026Tpi.Api.Controllers
         [HttpPost]
         [Authorize(Policy = Policies.PatientPolicy)]
         [ProducesResponseType(StatusCodes.Status201Created)]
-        
-       
         public async Task<IActionResult> Create([FromBody] AppointmentModel.Request request)
         {
             var response = await _appointmentService.CreateAppointment(request);
@@ -31,7 +28,6 @@ namespace Dsw2026Tpi.Api.Controllers
         [HttpGet("patient")]
         [Authorize(Policy = Policies.PatientPolicy)]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        
         public async Task<IActionResult> GetPatientAppointments([FromQuery] long dni)
         {
             var response = await _appointmentService.GetPatientAppointments(dni);
@@ -41,7 +37,6 @@ namespace Dsw2026Tpi.Api.Controllers
         [HttpDelete("{id:guid}")]
         [Authorize(Policy = Policies.PatientPolicy)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-       
         public async Task<IActionResult> Cancel(Guid id)
         {
             await _appointmentService.CancelAppointment(id);
@@ -70,7 +65,6 @@ namespace Dsw2026Tpi.Api.Controllers
         {
             var request =new SearchModel.Request(specialityId,doctorId, dni, date, pageSize, pageIndex);
             var response = await _appointmentService.SearchAppointments(request);
-
             return Ok(response);
         }
     }

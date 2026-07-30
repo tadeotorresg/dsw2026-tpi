@@ -16,7 +16,6 @@ namespace Dsw2026Tpi.Domain.Entities
         public DateTime? CancelledAt { get; private set; }
         public DateTime? AttendedAt { get; private set; }
 
-
         #region Constructor for EF
 #pragma warning disable CS8618
         private Appointment() { }
@@ -30,20 +29,22 @@ namespace Dsw2026Tpi.Domain.Entities
             Reason = reason;
             Status = AppointmentStatus.BOOKED;
         }
+
         public void Cancel()
         {
             CancelledAt = DateTime.Now;
             Status = AppointmentStatus.CANCELLED;
         }
+
         public void MarkAsAttended()
         {
             AttendedAt = DateTime.Now;
             Status = AppointmentStatus.ATTENDED;
         }
+
         public void MarkAsNoShow()
         {
             Status = AppointmentStatus.NO_SHOW;
         }
-
     }
 }

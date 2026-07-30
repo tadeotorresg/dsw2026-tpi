@@ -43,7 +43,7 @@ namespace Dsw2026Tpi.Application.Services
                     .WithDetail(nameof(request.AvailabilityId), "No se pueden reservar turnos pasados.");
 
             slot.Book();
-            slot.UpdatedAt = DateTime.UtcNow;
+            slot.UpdatedAt = DateTime.Now;
             await _persistence.Update(slot);
 
             var appointment = new Appointment(slot.Id, patient.Id, reason);
@@ -59,7 +59,7 @@ namespace Dsw2026Tpi.Application.Services
                 slot.EndTime.ToString(@"hh\:mm"),
                 createdAppointment.Reason,
                 createdAppointment.Status.ToString());
-            }
+        }
 
         public async Task CancelAppointment(Guid id)
         {
@@ -71,16 +71,15 @@ namespace Dsw2026Tpi.Application.Services
                     .WithDetail(nameof(appointment.Status),"El turno no está reservado");
 
             appointment.Cancel();
-            appointment.UpdatedAt = DateTime.UtcNow;
+            appointment.UpdatedAt = DateTime.Now;
 
             var slot = appointment.AvailabilitySlot!;
             slot.Free();
-            slot.UpdatedAt = DateTime.UtcNow;
+            slot.UpdatedAt = DateTime.Now;
 
             await _persistence.Update(appointment);
         }
 
-      
         public async Task<IEnumerable<SearchModel.Response>> GetDailyAppointments(DateOnly? date)
         {
             if (!date.HasValue)
@@ -101,7 +100,6 @@ namespace Dsw2026Tpi.Application.Services
                 .Select(MapSearchResponse)
                 .ToList();
         }
-        
 
         public async Task<IEnumerable<AppointmentModel.Response>> GetPatientAppointments(long dni)
         {
@@ -114,7 +112,6 @@ namespace Dsw2026Tpi.Application.Services
 
             var appointments = await _persistence.GetFiltered<Appointment>(a => a.Patient!.Dni == dniString && a.Status == AppointmentStatus.BOOKED && a.AvailabilitySlot!.SlotDate >= today,
                                                                            "AvailabilitySlot.AvailabilityRule");
-
             if (appointments is null)
                 return [];
 
@@ -132,7 +129,6 @@ namespace Dsw2026Tpi.Application.Services
                     appointment.Status.ToString()))
                 .ToList();
         }
-
 
         public async Task<Pagination<SearchModel.Response>> SearchAppointments(SearchModel.Request request)
         {
@@ -158,7 +154,6 @@ namespace Dsw2026Tpi.Application.Services
         }
 
         #region Private Methods
-
         private void ValidateAppointmentRequest(AppointmentModel.Request request)
         {
             if (request.Patient is null)
@@ -213,7 +208,6 @@ namespace Dsw2026Tpi.Application.Services
 
         private void ValidateSearchRequest(SearchModel.Request request)
         {
-
             if (request.SpecialtyId.HasValue && request.SpecialtyId.Value == Guid.Empty)
                 throw new ValidationException()
                     .WithDetail(nameof(request.SpecialtyId),"Debe indicar un identificador de especialidad válido.");
@@ -225,7 +219,6 @@ namespace Dsw2026Tpi.Application.Services
 
         private static SearchModel.Response MapSearchResponse(Appointment appointment)
         {
-
             var slot = appointment.AvailabilitySlot!;
             var doctor = slot.AvailabilityRule!.Doctor!;
 
@@ -239,12 +232,6 @@ namespace Dsw2026Tpi.Application.Services
                 slot.EndTime.ToString(@"hh\:mm"),
                 appointment.Status.ToString());
         }
-
-
-
         #endregion
     }
-
-
 }
- 
