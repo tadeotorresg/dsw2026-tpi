@@ -11,18 +11,22 @@ namespace Dsw2026Tpi.Application.Services
     public class AvailabilityService : IAvailabilityService
     {
         private readonly IPersistence _persistence;
-        public AvailabilityService(IPersistence persistence)
+        private readonly IHolidayProvider _holidayProvider;
+        public AvailabilityService(IPersistence persistence, IHolidayProvider holidayProvider)
         {
             _persistence = persistence;
+            _holidayProvider = holidayProvider;
         }
 
-        public async Task CreateAvailability(AvailabilityModel.Request request)
+        public async Task <IEnumerable<AvailabilityModel.Response>> CreateAvailability (AvailabilityModel.Request request)
         {
             var doctor = await ValidateDoctor(request.DoctorId);
 
             var today = DateTime.Today;
             short year = (short)today.Year;
             byte month = (byte)today.Month;
+
+            var holidays = _holidayProvider.GetHolidays(year, month);
 
             ValidateDays(request.Days);
 
@@ -30,25 +34,38 @@ namespace Dsw2026Tpi.Application.Services
                 (r => r.DoctorId == request.DoctorId && r.Month == month && r.Year == year && r.Deleted == false);
             if (existingRules != null)
                 CheckOverlaps(request.Days, existingRules);
-            
+
+            var responses = new List<AvailabilityModel.Response>();
+
             foreach (var dayReq in request.Days)
             {
                 var dayOfWeek = DayOfWeekConverter.Parse(dayReq.Day);
                 var rule = new AvailabilityRule(request.DoctorId, month, year, (byte)dayOfWeek, dayReq.StartTime, dayReq.EndTime);
-                rule.GenerateSlotsForRestOfMonth(today);
+                rule.GenerateSlotsForRestOfMonth(today, holidays);
 
                 if (rule.Slots.Any())
-                    await _persistence.Add(rule);     
+                {
+                    var createdRule = await _persistence.Add(rule);
+
+                    responses.Add(new AvailabilityModel.Response(
+                    createdRule.Id,
+                    DayOfWeekConverter.GetDayName(createdRule.DayOfWeek),
+                    createdRule.StartTime.ToString(@"hh\:mm"),
+                    createdRule.EndTime.ToString(@"hh\:mm")));
+                }     
             }
+            return responses;
         }
 
-        public async Task UpdateAvailability(AvailabilityModel.Request request)
+        public async Task <IEnumerable<AvailabilityModel.Response>> UpdateAvailability(AvailabilityModel.Request request)
         {
             var doctor = await ValidateDoctor(request.DoctorId);
 
             var today = DateTime.Today;
             short year = (short)today.Year;
             byte month = (byte)today.Month;
+
+            var holidays = _holidayProvider.GetHolidays(year, month);
 
             ValidateDays(request.Days);
 
@@ -76,16 +93,26 @@ namespace Dsw2026Tpi.Application.Services
             }
             CheckOverlaps(request.Days, new List<AvailabilityRule>());
 
+            var responses = new List<AvailabilityModel.Response>();
             foreach (var dayReq in request.Days)
             {
                 var dayOfWeek = DayOfWeekConverter.Parse(dayReq.Day);
                 var rule = new AvailabilityRule(request.DoctorId, month, year, (byte)dayOfWeek, dayReq.StartTime, dayReq.EndTime);
 
-                rule.GenerateSlotsForRestOfMonth(today);
+                rule.GenerateSlotsForRestOfMonth(today, holidays);
 
-                if (rule.Slots.Any()) 
-                    await _persistence.Add(rule);
+                if (rule.Slots.Any())
+                {
+                    var createdRule = await _persistence.Add(rule);
+
+                    responses.Add(new AvailabilityModel.Response(
+                        createdRule.Id,
+                        DayOfWeekConverter.GetDayName(createdRule.DayOfWeek),
+                        createdRule.StartTime.ToString(@"hh\:mm"),
+                        createdRule.EndTime.ToString(@"hh\:mm")));
+                } 
             }
+            return responses;
         }
 
         #region Private Methods

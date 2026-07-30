@@ -31,7 +31,7 @@
 
         private static readonly TimeSpan SlotDuration = TimeSpan.FromMinutes(30);
 
-        public void GenerateSlotsForRestOfMonth(DateTime fromDate)
+        public void GenerateSlotsForRestOfMonth(DateTime fromDate, IReadOnlySet<DateOnly> holidays)
         {
             var daysInMonth = DateTime.DaysInMonth(Year, Month);
 
@@ -40,6 +40,9 @@
                 var date = new DateTime(Year, Month, day);
 
                 if ((byte)date.DayOfWeek != DayOfWeek)
+                    continue;
+
+                if (holidays.Contains(DateOnly.FromDateTime(date)))
                     continue;
 
                 var currentTime = StartTime;
