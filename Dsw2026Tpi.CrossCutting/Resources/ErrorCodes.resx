@@ -147,4 +147,7 @@
   <data name="APPOINTMENT_CONFLICT" xml:space="preserve">
     <value>Existe un problema con la disponiblidad del turno</value>
   </data>
+  <data name="TOO_MANY_REQUESTS" xml:space="preserve">
+    <value>Se superó el límite de solicitudes permitidas. Intente nuevamente en unos instantes.</value>
+  </data>
 </root>
