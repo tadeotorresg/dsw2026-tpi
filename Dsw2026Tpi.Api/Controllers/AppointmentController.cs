@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Dsw2026Tpi.Api.Controllers
 {
 
-    [Route("appointments")]
+    [Route("api/appointments")]
     public class AppointmentController : AppController 
     {
         private readonly IAppointmentService _appointmentService;
@@ -61,15 +61,15 @@ namespace Dsw2026Tpi.Api.Controllers
         [Authorize(Policy = Policies.AdminPolicy)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> SearchAppointments(
-            [FromQuery] Guid? specialtyId,
+            [FromQuery] Guid? specialityId,
             [FromQuery] Guid? doctorId,
             [FromQuery] string? dni,
             [FromQuery] DateOnly? date,
             [FromQuery] int pageSize = 10,
             [FromQuery] int pageIndex = 1)
         {
-            var response = await _appointmentService.SearchAppointments(
-                specialtyId, doctorId, dni, date, pageSize, pageIndex);
+            var request =new SearchModel.Request(specialityId,doctorId, dni, date, pageSize, pageIndex);
+            var response = await _appointmentService.SearchAppointments(request);
 
             return Ok(response);
         }
