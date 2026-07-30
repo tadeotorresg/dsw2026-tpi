@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace Dsw2026Tpi.Api.Controllers;
 
 [Route("api/specialities")]
-[Authorize(Policy = Policies.AdminPolicy)]
 public class SpecialitiesController : AppController
 {
     private readonly ISpecialityService _specialityService;
@@ -18,6 +17,7 @@ public class SpecialitiesController : AppController
     }
 
     [HttpPost]
+    [Authorize(Policy = Policies.AdminPolicy)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     public async Task<IActionResult> Create([FromBody] SpecialityModel.Request request)
     {
@@ -26,6 +26,7 @@ public class SpecialitiesController : AppController
     }
 
     [HttpGet]
+    [Authorize(Roles = Roles.Administrator + "," + Roles.Patient)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll([FromQuery] int pageSize = 10, [FromQuery] int pageIndex = 1, [FromQuery] string? name = null)
     {
@@ -34,6 +35,7 @@ public class SpecialitiesController : AppController
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = Policies.AdminPolicy)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Update(Guid id, [FromBody] SpecialityModel.Request request)
     {
@@ -42,6 +44,7 @@ public class SpecialitiesController : AppController
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = Policies.AdminPolicy)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Delete(Guid id)
     {

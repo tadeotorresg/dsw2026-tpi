@@ -38,13 +38,11 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<LoginAdminModel.Response> LoginAdmin(LoginAdminModel.Request request)
     {
-        if (!request.Email.IsEmailValid()) 
-            throw new ValidationException()
+        if (!request.Email.IsEmailValid()) throw new ValidationException("Los datos enviados son inválidos.", ErrorCodes.VALIDATION_ERROR)
                 .WithDetail(nameof(request.Email), "Debe indicar un email válido");
 
 
-        if (!request.Password.IsPasswordValid()) 
-            throw new ValidationException()
+        if (!request.Password.IsPasswordValid()) throw new ValidationException("Los datos enviados son inválidos.", ErrorCodes.VALIDATION_ERROR)
                 .WithDetail(nameof(request.Password), "La contraseña debe tener al menos 8 caracteres.");
 
 
@@ -76,14 +74,13 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<LoginPatientModel.Response> LoginPatient(LoginPatientModel.Request request)
     {
-        if (!request.Email.IsEmailValid()) 
-            throw new ValidationException()
+        if (!request.Email.IsEmailValid())
+            throw new ValidationException("Los datos enviados son inválidos.", ErrorCodes.VALIDATION_ERROR)
                 .WithDetail(nameof(request.Email), "Debe indicar un email válido.");
 
         var dniString = request.Dni.ToString();
-
-        if (!request.Dni.IsDniValid()) 
-            throw new ValidationException()
+        if (!request.Dni.IsDniValid())
+            throw new ValidationException("Los datos enviados son inválidos.", ErrorCodes.VALIDATION_ERROR)
                 .WithDetail(nameof(request.Dni), "El DNI debe tener entre 7 y 8 dígitos.");
 
         var patient = await _persistence.First<Patient>(p => p.Dni == dniString);
@@ -103,14 +100,14 @@ public class AuthenticationService : IAuthenticationService
             var userResult = await _userManager.CreateAsync(user);
 
             if (!userResult.Succeeded)
-                throw new ConflictException(ErrorCodes.REGISTER_USER_CONFLICT, nameof(ErrorCodes.REGISTER_USER_CONFLICT))
+                throw new ConflictException("No se pudo registrar el usuario.", ErrorCodes.REGISTER_USER_CONFLICT)
                     .WithDetail(userResult.Errors.Select(e => (e.Code, e.Description)));
 
 
             var rol = await _userManager.AddToRoleAsync(user, Roles.Patient);
 
             if (!rol.Succeeded)
-                throw new ConflictException("No se pudo asignar el rol Paciente.", nameof(ErrorCodes.REGISTER_USER_CONFLICT))
+                throw new ConflictException("No se pudo asignar el rol Paciente.", ErrorCodes.REGISTER_USER_CONFLICT)
                     .WithDetail(rol.Errors.Select(error => (error.Code, error.Description)));
 
             var userId = Guid.Parse(user.Id);
@@ -121,12 +118,15 @@ public class AuthenticationService : IAuthenticationService
         }
 
         if (user is null || patient is null)
+        {
             throw new AuthenticationException();
-  
+        }
         var authenticatedUserId = Guid.Parse(user.Id);
 
         if (patient.UserId != authenticatedUserId)
+        {
             throw new AuthenticationException();
+        }
 
         var token = _jwtService.GenerateToken(user.UserName!, Roles.Patient);
 
@@ -140,9 +140,8 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<RegisterModel.Response> Register(RegisterModel.Request request)
     {
-        if (!request.Email.IsEmailValid()) 
-            throw new ValidationException()
-                .WithDetail(nameof(request.Email), "Debe indicar un email válido.");
+        if (!request.Email.IsEmailValid()) throw new ValidationException("Los datos enviados son inválidos.", ErrorCodes.REGISTER_USER_INVALID)
+            .WithDetail(nameof(request.Email), "Debe indicar un email válido.");
 
         var user = new ApplicationUser
         {
@@ -154,8 +153,7 @@ public class AuthenticationService : IAuthenticationService
 
         var result = await _userManager.CreateAsync(user, request.Password);
 
-        if (!result.Succeeded) 
-            throw new ConflictException(ErrorCodes.REGISTER_USER_CONFLICT, nameof(ErrorCodes.REGISTER_USER_CONFLICT))
+        if (!result.Succeeded) throw new ConflictException("No se pudo registrar el usuario.", ErrorCodes.REGISTER_USER_CONFLICT)
                 .WithDetail(result.Errors.Select(e => (e.Code, e.Description)));
 
         _ = await _userManager.AddToRoleAsync(user, Roles.Administrator);
