@@ -72,7 +72,6 @@ namespace Dsw2026Tpi.Application.Services
                              ?? throw new EntityNotFoundException(nameof(Speciality));
 
             speciality.UpdateDetails(request.Name, request.Description);
-            speciality.UpdatedAt = DateTime.UtcNow;
 
             await _persistence.Update(speciality);
 
@@ -88,7 +87,6 @@ namespace Dsw2026Tpi.Application.Services
                             ?? throw new EntityNotFoundException(nameof(Speciality));
 
            speciality.SetDeleted();
-            speciality.UpdatedAt = DateTime.UtcNow;
 
             await _persistence.Update(speciality);
         }

@@ -93,8 +93,8 @@ public class AuthenticationService : IAuthenticationService
             {
                 UserName = request.Email,
                 Email = request.Email,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
             };
 
             var userResult = await _userManager.CreateAsync(user);
@@ -113,6 +113,7 @@ public class AuthenticationService : IAuthenticationService
             var userId = Guid.Parse(user.Id);
 
             patient = new Patient(userId, dniString);
+            _logger.LogInformation("Paciente registrado automáticamente. DNI: {Dni}", dniString);
 
             await _persistence.Add(patient);
         }
@@ -147,8 +148,8 @@ public class AuthenticationService : IAuthenticationService
         {
             UserName = request.Email,
             Email = request.Email,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now,
+            UpdatedAt = DateTime.Now
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);

@@ -1,11 +1,12 @@
 ﻿using Dsw2026Tpi.Application.Dtos;
 using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.CrossCutting.Exceptions;
+using Dsw2026Tpi.CrossCutting.Helpers;
 using Dsw2026Tpi.CrossCutting.Resources;
 using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Enums;
 using Dsw2026Tpi.Domain.Interfaces;
-using Dsw2026Tpi.CrossCutting.Helpers;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -15,10 +16,12 @@ namespace Dsw2026Tpi.Application.Services
     public class AppointmentService : IAppointmentService
     {
         private readonly IPersistence _persistence;
+        private readonly ILogger<AppointmentService> _logger;
 
-        public AppointmentService(IPersistence persistence)
+        public AppointmentService(IPersistence persistence, ILogger <AppointmentService> logger)
         {
             _persistence = persistence;
+            _logger = logger;
         }
 
         public async Task<AppointmentModel.Response> CreateAppointment(AppointmentModel.Request request)
@@ -33,9 +36,12 @@ namespace Dsw2026Tpi.Application.Services
             var slot = await ValidateSlot(request.AvailabilityId, doctor.Id);
 
             if (slot.Status != SlotStatus.AVAILABLE)
+            {
+                _logger.LogWarning("Intento de reserva sobre un turno no disponible. Slot: {SlotId}, Paciente: {PatientDni}",
+                    slot.Id, patientRequest.Dni);
                 throw new ConflictException(ErrorCodes.APPOINTMENT_CONFLICT, nameof(ErrorCodes.APPOINTMENT_CONFLICT))
-                    .WithDetail(nameof(request.AvailabilityId), "Turno no disponible");
-
+                   .WithDetail(nameof(request.AvailabilityId), "Turno no disponible.");
+            }
             var slotDateTime = slot.SlotDate.Date.Add(slot.StartTime);
 
             if (slotDateTime < DateTime.Now)
@@ -43,13 +49,14 @@ namespace Dsw2026Tpi.Application.Services
                     .WithDetail(nameof(request.AvailabilityId), "No se pueden reservar turnos pasados.");
 
             slot.Book();
-            slot.UpdatedAt = DateTime.Now;
             await _persistence.Update(slot);
 
             var appointment = new Appointment(slot.Id, patient.Id, reason);
             var createdAppointment = await _persistence.Add(appointment);
+            _logger.LogInformation("Turno reservado. Cita: {AppointmentId}, Paciente: {PatientDni}, Médico: {DoctorId}, Fecha: {SlotDate} {StartTime}",
+                appointment.Id, patient.Dni, doctor.Id, slot.SlotDate.ToString("yyyy-MM-dd"), slot.StartTime);
 
-                return new AppointmentModel.Response(
+            return new AppointmentModel.Response(
                 createdAppointment.Id,
                 doctor.Id,
                 slot.Id,
@@ -68,16 +75,17 @@ namespace Dsw2026Tpi.Application.Services
 
             if (appointment.Status != AppointmentStatus.BOOKED)
                 throw new ConflictException(ErrorCodes.INVALID_STATUS, nameof(ErrorCodes.INVALID_STATUS))
-                    .WithDetail(nameof(appointment.Status),"El turno no está reservado");
+                    .WithDetail(nameof(appointment.Status),"El turno no está reservado.");
 
             appointment.Cancel();
-            appointment.UpdatedAt = DateTime.Now;
 
             var slot = appointment.AvailabilitySlot!;
             slot.Free();
             slot.UpdatedAt = DateTime.Now;
 
             await _persistence.Update(appointment);
+            _logger.LogInformation("Turno cancelado. Cita: {AppointmentId}, Slot liberado: {SlotId}",
+                 appointment.Id, slot.Id);
         }
 
         public async Task<IEnumerable<SearchModel.Response>> GetDailyAppointments(DateOnly? date)

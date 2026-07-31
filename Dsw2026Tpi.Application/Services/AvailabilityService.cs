@@ -5,6 +5,7 @@ using Dsw2026Tpi.CrossCutting.Helpers;
 using Dsw2026Tpi.CrossCutting.Resources;
 using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace Dsw2026Tpi.Application.Services
 {
@@ -12,10 +13,12 @@ namespace Dsw2026Tpi.Application.Services
     {
         private readonly IPersistence _persistence;
         private readonly IHolidayProvider _holidayProvider;
-        public AvailabilityService(IPersistence persistence, IHolidayProvider holidayProvider)
+        private readonly ILogger<AvailabilityService> _logger;
+        public AvailabilityService(IPersistence persistence, IHolidayProvider holidayProvider, ILogger<AvailabilityService> logger)
         {
             _persistence = persistence;
             _holidayProvider = holidayProvider;
+            _logger = logger;
         }
 
         public async Task <IEnumerable<AvailabilityModel.Response>> CreateAvailability (AvailabilityModel.Request request)
@@ -54,6 +57,8 @@ namespace Dsw2026Tpi.Application.Services
                     createdRule.EndTime.ToString(@"hh\:mm")));
                 }     
             }
+            _logger.LogInformation("Disponibilidad configurada para el médico {DoctorId}. Período: {Month}/{Year}, Días: {Days}",
+               request.DoctorId, month, year, request.Days.Count);
             return responses;
         }
 
@@ -77,7 +82,6 @@ namespace Dsw2026Tpi.Application.Services
                 foreach (var rule in existingRules)
                 {
                     rule.SetDeleted();
-                    rule.UpdatedAt = DateTime.UtcNow;
                     await _persistence.Update(rule);
 
                     if (rule.Slots != null)
@@ -85,7 +89,6 @@ namespace Dsw2026Tpi.Application.Services
                         foreach (var slot in rule.Slots)
                         {
                             slot.SetDeleted();
-                            slot.UpdatedAt = DateTime.UtcNow;
                             await _persistence.Update(slot);
                         }
                     }
@@ -112,6 +115,8 @@ namespace Dsw2026Tpi.Application.Services
                         createdRule.EndTime.ToString(@"hh\:mm")));
                 } 
             }
+            _logger.LogInformation("Disponibilidad actualizada para el médico {DoctorId}. Período: {Month}/{Year}, Días: {Days}",
+                request.DoctorId, month, year, request.Days.Count);
             return responses;
         }
 
