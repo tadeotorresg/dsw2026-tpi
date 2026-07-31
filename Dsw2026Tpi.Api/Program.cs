@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Serilog;
 
 namespace Dsw2026Tpi.Api;
-
 public class Program
 {
     public static async Task Main(string[] args)
@@ -14,7 +13,6 @@ public class Program
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()
             .CreateBootstrapLogger();
-
         try
         {
             Log.Information("Iniciando aplicación Dsw2026Tpi.Api");
@@ -32,6 +30,8 @@ public class Program
             builder.Services.AddControllers();
             builder.Services.AddHealthChecks();
 
+            builder.Services.AddAppRateLimiting(builder.Configuration);
+
             var app = builder.Build();
 
             app.UseSerilogRequestLogging();
@@ -46,11 +46,14 @@ public class Program
                 app.UseSwaggerUI();
             }
 
-            app.UseAuthentication();
-            app.UseAuthorization();
-            app.UseCors();
             app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+            app.UseCors();
+
+            app.UseAuthentication();
+            app.UseRateLimiter();
+            app.UseAuthorization(); 
+            
             app.MapControllers();
             app.MapHealthChecks("/health-check");
 

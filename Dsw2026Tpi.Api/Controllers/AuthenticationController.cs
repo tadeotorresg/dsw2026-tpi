@@ -1,6 +1,8 @@
-﻿using Dsw2026Tpi.Application.Dtos;
+﻿using Dsw2026Tpi.Api.Configurations;
+using Dsw2026Tpi.Application.Dtos;
 using Dsw2026Tpi.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Dsw2026Tpi.Api.Controllers;
 
@@ -24,6 +26,7 @@ public class AuthenticationController : AppController
     }
 
     [HttpPost("admin/login")]
+    [EnableRateLimiting(RateLimitingConfigurationExtensions.AdminLogin)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Login([FromBody] LoginAdminModel.Request request)
@@ -33,6 +36,7 @@ public class AuthenticationController : AppController
     }
 
     [HttpPost("patient/login")]
+    [EnableRateLimiting(RateLimitingConfigurationExtensions.PatientLogin)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> LoginPatient([FromBody] LoginPatientModel.Request request)

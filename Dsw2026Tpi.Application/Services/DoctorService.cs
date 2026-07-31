@@ -97,7 +97,6 @@ public class DoctorService : IDoctorService
             ?? throw new EntityNotFoundException(nameof(Doctor));
 
         doctor.UpdateProfile(request.Name, request.LicenseNumber, speciality);
-        doctor.UpdatedAt = DateTime.UtcNow;
 
         await _persistence.Update(doctor);
 
@@ -111,7 +110,6 @@ public class DoctorService : IDoctorService
             ?? throw new EntityNotFoundException(nameof(Doctor));
 
         doctor.SetDeleted();
-        doctor.UpdatedAt = DateTime.UtcNow;
 
         await _persistence.Update(doctor);
     }
