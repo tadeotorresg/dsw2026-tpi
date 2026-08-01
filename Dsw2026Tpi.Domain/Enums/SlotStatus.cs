@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace Dsw2026Tpi.Domain.Enums;
 
-namespace Dsw2026Tpi.Domain.Enums
-{
-        public enum SlotStatus
-        {
-            AVAILABLE,
-            BOOKED,
-            BLOCKED
-        }
-    
-}
+    public enum SlotStatus
+    {
+        AVAILABLE,
+        BOOKED,
+        BLOCKED
+    }

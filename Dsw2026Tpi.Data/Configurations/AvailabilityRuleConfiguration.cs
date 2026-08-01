@@ -1,8 +1,6 @@
 ﻿using Dsw2026Tpi.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System.Data;
-using System.Text;
 
 namespace Dsw2026Tpi.Data.Configurations;
 
@@ -35,11 +33,11 @@ public class AvailabilityRuleConfiguration : IEntityTypeConfiguration<Availabili
             .IsRequired();
 
         builder.HasIndex(r => new { r.DoctorId, r.Year, r.Month, r.DayOfWeek, r.StartTime, r.EndTime})
-            .IsUnique();
+            .IsUnique()
+            .HasFilter("[Deleted] = 0");
 
         builder.Property(r => r.Deleted)
             .HasDefaultValue(false);
         builder.HasQueryFilter(r => !r.Deleted);
-
     }
 }

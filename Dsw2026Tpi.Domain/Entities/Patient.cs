@@ -1,23 +1,22 @@
-﻿namespace Dsw2026Tpi.Domain.Entities
+﻿namespace Dsw2026Tpi.Domain.Entities;
+
+public class Patient : SoftDeletableEntity
 {
-    public class Patient : SoftDeletableEntity
-    {
-        public Guid UserId { get; private set; }
-        public string Dni {  get; init; }
-        public string? FullName { get; init; }
+    public Guid UserId { get; private set; }
+    public string Dni {  get; init; }
+    public string? FullName { get; init; }
 
 
-        #region Constructor for EF
+    #region Constructor for EF
 #pragma warning disable CS8618
-        private Patient() { }
+    private Patient() { }
 #pragma warning restore CS8618
-        #endregion
+    #endregion
 
-        public Patient (Guid userId, string dni, string? fullName = null)
-        {
-            UserId = userId;
-            Dni = dni;
-            FullName = fullName;
-        }
+    public Patient (Guid userId, string dni, string? fullName = null)
+    {
+        UserId = userId;
+        Dni = dni;
+        FullName = fullName;
     }
 }

@@ -103,7 +103,6 @@ public class AuthenticationService : IAuthenticationService
                 throw new ConflictException("No se pudo registrar el usuario.", ErrorCodes.REGISTER_USER_CONFLICT)
                     .WithDetail(userResult.Errors.Select(e => (e.Code, e.Description)));
 
-
             var rol = await _userManager.AddToRoleAsync(user, Roles.Patient);
 
             if (!rol.Succeeded)
@@ -141,8 +140,9 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<RegisterModel.Response> Register(RegisterModel.Request request)
     {
-        if (!request.Email.IsEmailValid()) throw new ValidationException("Los datos enviados son inválidos.", ErrorCodes.REGISTER_USER_INVALID)
-            .WithDetail(nameof(request.Email), "Debe indicar un email válido.");
+        if (!request.Email.IsEmailValid()) 
+            throw new ValidationException("Los datos enviados son inválidos.", ErrorCodes.REGISTER_USER_INVALID)
+                .WithDetail(nameof(request.Email), "Debe indicar un email válido.");
 
         var user = new ApplicationUser
         {
@@ -154,7 +154,8 @@ public class AuthenticationService : IAuthenticationService
 
         var result = await _userManager.CreateAsync(user, request.Password);
 
-        if (!result.Succeeded) throw new ConflictException("No se pudo registrar el usuario.", ErrorCodes.REGISTER_USER_CONFLICT)
+        if (!result.Succeeded) 
+            throw new ConflictException("No se pudo registrar el usuario.", ErrorCodes.REGISTER_USER_CONFLICT)
                 .WithDetail(result.Errors.Select(e => (e.Code, e.Description)));
 
         _ = await _userManager.AddToRoleAsync(user, Roles.Administrator);

@@ -16,8 +16,7 @@ namespace Dsw2026Tpi.Data.Providers
 
             var json = File.ReadAllText(path);
 
-            _calendar = JsonSerializer.Deserialize<HolidayCalendar>(
-                json,
+            _calendar = JsonSerializer.Deserialize<HolidayCalendar>(json,
                 new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
@@ -31,4 +30,3 @@ namespace Dsw2026Tpi.Data.Providers
         }
     }
 }
-

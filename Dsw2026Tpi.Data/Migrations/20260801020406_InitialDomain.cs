@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Dsw2026Tpi.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class AddAppointments : Migration
+    public partial class InitialDomain : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -29,7 +29,7 @@ namespace Dsw2026Tpi.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Specialities",
+                name: "Specialties",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
@@ -41,7 +41,7 @@ namespace Dsw2026Tpi.Data.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Specialities", x => x.Id);
+                    table.PrimaryKey("PK_Specialties", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -51,7 +51,7 @@ namespace Dsw2026Tpi.Data.Migrations
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Name = table.Column<string>(type: "varchar(100)", unicode: false, maxLength: 100, nullable: false),
                     LicenseNumber = table.Column<string>(type: "varchar(50)", unicode: false, maxLength: 50, nullable: true),
-                    SpecialityId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    SpecialtyId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -61,9 +61,9 @@ namespace Dsw2026Tpi.Data.Migrations
                 {
                     table.PrimaryKey("PK_Doctors", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Doctors_Specialities_SpecialityId",
-                        column: x => x.SpecialityId,
-                        principalTable: "Specialities",
+                        name: "FK_Doctors_Specialties_SpecialtyId",
+                        column: x => x.SpecialtyId,
+                        principalTable: "Specialties",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -166,18 +166,20 @@ namespace Dsw2026Tpi.Data.Migrations
                 name: "IX_AvailabilityRules_DoctorId_Year_Month_DayOfWeek_StartTime_EndTime",
                 table: "AvailabilityRules",
                 columns: new[] { "DoctorId", "Year", "Month", "DayOfWeek", "StartTime", "EndTime" },
-                unique: true);
+                unique: true,
+                filter: "[Deleted] = 0");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AvailabilitySlots_AvailabilityRuleId_SlotDate_StartTime",
                 table: "AvailabilitySlots",
                 columns: new[] { "AvailabilityRuleId", "SlotDate", "StartTime" },
-                unique: true);
+                unique: true,
+                filter: "[Deleted] = 0");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Doctors_SpecialityId",
+                name: "IX_Doctors_SpecialtyId",
                 table: "Doctors",
-                column: "SpecialityId");
+                column: "SpecialtyId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Patients_Dni",
@@ -192,10 +194,11 @@ namespace Dsw2026Tpi.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Specialities_Name",
-                table: "Specialities",
+                name: "IX_Specialties_Name",
+                table: "Specialties",
                 column: "Name",
-                unique: true);
+                unique: true,
+                filter: "[Deleted] = 0");
         }
 
         /// <inheritdoc />
@@ -217,7 +220,7 @@ namespace Dsw2026Tpi.Data.Migrations
                 name: "Doctors");
 
             migrationBuilder.DropTable(
-                name: "Specialities");
+                name: "Specialties");
         }
     }
 }

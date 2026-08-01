@@ -35,6 +35,7 @@ namespace Dsw2026Tpi.Application.Services
 
             var existingRules = await _persistence.GetFiltered<AvailabilityRule>
                 (r => r.DoctorId == request.DoctorId && r.Month == month && r.Year == year && r.Deleted == false);
+           
             if (existingRules != null)
                 CheckOverlaps(request.Days, existingRules);
 
@@ -50,15 +51,13 @@ namespace Dsw2026Tpi.Application.Services
                 {
                     var createdRule = await _persistence.Add(rule);
 
-                    responses.Add(new AvailabilityModel.Response(
-                    createdRule.Id,
-                    DayOfWeekConverter.GetDayName(createdRule.DayOfWeek),
-                    createdRule.StartTime.ToString(@"hh\:mm"),
-                    createdRule.EndTime.ToString(@"hh\:mm")));
+                    responses.Add(MapResponse(createdRule));
                 }     
             }
+
             _logger.LogInformation("Disponibilidad configurada para el médico {DoctorId}. Período: {Month}/{Year}, Días: {Days}",
                request.DoctorId, month, year, request.Days.Count);
+
             return responses;
         }
 
@@ -74,8 +73,8 @@ namespace Dsw2026Tpi.Application.Services
 
             ValidateDays(request.Days);
 
-            var existingRules = await _persistence.GetFiltered<AvailabilityRule>(
-                r => r.DoctorId == request.DoctorId && r.Month == month && r.Year == year && r.Deleted == false, "Slots");
+            var existingRules = await _persistence.GetFiltered<AvailabilityRule>
+                (r => r.DoctorId == request.DoctorId && r.Month == month && r.Year == year && r.Deleted == false, "Slots");
 
             if (existingRules != null)
             {
@@ -108,11 +107,7 @@ namespace Dsw2026Tpi.Application.Services
                 {
                     var createdRule = await _persistence.Add(rule);
 
-                    responses.Add(new AvailabilityModel.Response(
-                        createdRule.Id,
-                        DayOfWeekConverter.GetDayName(createdRule.DayOfWeek),
-                        createdRule.StartTime.ToString(@"hh\:mm"),
-                        createdRule.EndTime.ToString(@"hh\:mm")));
+                    responses.Add(MapResponse(createdRule));
                 } 
             }
             _logger.LogInformation("Disponibilidad actualizada para el médico {DoctorId}. Período: {Month}/{Year}, Días: {Days}",
@@ -137,7 +132,9 @@ namespace Dsw2026Tpi.Application.Services
                     throw new ValidationException()
                         .WithDetail(nameof(day.EndTime), "El intervalo debe ser de al menos 30 minutos.");
             }
+
             var grouped = days.GroupBy(d => d.Day.ToUpper());
+
             foreach (var group in grouped)
             {
                 var ordered = group.OrderBy(g => g.StartTime).ToList();
@@ -149,6 +146,7 @@ namespace Dsw2026Tpi.Application.Services
                 }
             }
         }
+
         private void CheckOverlaps(List<AvailabilityModel.DayRequest> requests, IEnumerable<AvailabilityRule> existingRules)
         {
             foreach (var req in requests)
@@ -164,6 +162,7 @@ namespace Dsw2026Tpi.Application.Services
                 }
             }
         }
+
         private async Task <Doctor> ValidateDoctor (Guid doctorId)
         {
             if (doctorId == Guid.Empty )
@@ -172,6 +171,15 @@ namespace Dsw2026Tpi.Application.Services
             
             return await _persistence.GetById<Doctor>(doctorId)
                 ?? throw new EntityNotFoundException(nameof(Doctor));
+        }
+
+        private static AvailabilityModel.Response MapResponse(AvailabilityRule rule)
+        {
+            return new AvailabilityModel.Response(
+                rule.Id,
+                DayOfWeekConverter.GetDayName(rule.DayOfWeek),
+                rule.StartTime.ToString(@"hh\:mm"),
+                rule.EndTime.ToString(@"hh\:mm"));
         }
         #endregion
     }

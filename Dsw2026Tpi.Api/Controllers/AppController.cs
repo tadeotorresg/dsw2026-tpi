@@ -9,4 +9,3 @@ namespace Dsw2026Tpi.Api.Controllers;
 public abstract class AppController : ControllerBase
 {
 }
-

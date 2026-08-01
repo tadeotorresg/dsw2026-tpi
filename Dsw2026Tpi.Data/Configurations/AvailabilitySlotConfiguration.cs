@@ -1,7 +1,6 @@
 ﻿using Dsw2026Tpi.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System.Data;
 
 namespace Dsw2026Tpi.Data.Configurations;
 
@@ -34,12 +33,11 @@ public class AvailabilitySlotConfiguration : IEntityTypeConfiguration<Availabili
             .HasMaxLength(20);
 
         builder.HasIndex(sl => new { sl.AvailabilityRuleId, sl.SlotDate, sl.StartTime})
-            .IsUnique();
+            .IsUnique()
+            .HasFilter("[Deleted] = 0");
 
         builder.Property(sl => sl.Deleted)
             .HasDefaultValue(false);
-
         builder.HasQueryFilter(sl => !sl.Deleted);
-
     }
 }

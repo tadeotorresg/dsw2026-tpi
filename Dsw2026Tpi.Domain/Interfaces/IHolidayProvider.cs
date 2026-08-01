@@ -1,8 +1,6 @@
-﻿
-namespace Dsw2026Tpi.Domain.Interfaces
+﻿namespace Dsw2026Tpi.Domain.Interfaces;
+
+public interface IHolidayProvider
 {
-    public interface IHolidayProvider
-    {
-        IReadOnlySet<DateOnly> GetHolidays(short year, byte month);
-    }
+    IReadOnlySet<DateOnly> GetHolidays(short year, byte month);
 }
