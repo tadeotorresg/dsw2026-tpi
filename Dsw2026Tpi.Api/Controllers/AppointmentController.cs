@@ -1,10 +1,12 @@
-﻿using Dsw2026Tpi.Application.Dtos;
+﻿using Dsw2026Tpi.Api.Configurations;
+using Dsw2026Tpi.Application.Dtos;
 using Dsw2026Tpi.Application.Interfaces;
+using Dsw2026Tpi.CrossCutting.Exceptions;
 using Dsw2026Tpi.CrossCutting.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Dsw2026Tpi.Api.Configurations;
 using Microsoft.AspNetCore.RateLimiting;
+using Dsw2026Tpi.CrossCutting.Helpers;
 
 namespace Dsw2026Tpi.Api.Controllers;
 
@@ -24,6 +26,7 @@ public class AppointmentController : AppController
     [ProducesResponseType(StatusCodes.Status201Created)]
     public async Task<IActionResult> Create([FromBody] AppointmentModel.Request request)
     {
+        User.GetAuthenticatedDni(request.Patient?.Dni);
         var response = await _appointmentService.CreateAppointment(request);
         return StatusCode(StatusCodes.Status201Created, response);
     }
@@ -33,17 +36,19 @@ public class AppointmentController : AppController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPatientAppointments([FromQuery] long? dni)
     {
-        var response = await _appointmentService.GetPatientAppointments(dni);
+        var dniDelToken = User.GetAuthenticatedDni(dni);
+        var response = await _appointmentService.GetPatientAppointments(long.Parse(dniDelToken));
         return Ok(response);
     }
 
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = Policies.PatientPolicy)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Cancel(Guid id)
     {
-        await _appointmentService.CancelAppointment(id);
-        return NoContent();
+        var dniDelToken = User.GetAuthenticatedDni();
+        await _appointmentService.CancelAppointment(id, dniDelToken);
+        return Ok();
     }
 
     [HttpGet]

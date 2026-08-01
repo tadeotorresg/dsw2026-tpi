@@ -59,10 +59,13 @@ namespace Dsw2026Tpi.Application.Services
                 slot);
         }
 
-        public async Task CancelAppointment(Guid id)
+        public async Task CancelAppointment(Guid id, string dniDelToken)
         {
-            var appointment = await _persistence.GetById<Appointment>(id,  nameof(Appointment.AvailabilitySlot))
+            var appointment = await _persistence.GetById<Appointment>(id,  nameof(Appointment.AvailabilitySlot), nameof(Appointment.Patient))
                 ?? throw new EntityNotFoundException(nameof(Appointment));
+
+            if (appointment.Patient!.Dni != dniDelToken)
+                throw new AuthorizationException();
 
             if (appointment.Status != AppointmentStatus.BOOKED)
                 throw new ConflictException(ErrorCodes.INVALID_STATUS, nameof(ErrorCodes.INVALID_STATUS))
@@ -83,7 +86,7 @@ namespace Dsw2026Tpi.Application.Services
         {
             if (!date.HasValue)
                 throw new ValidationException()
-                    .WithDetail(nameof(date), "La fecha es obligatorio.");
+                    .WithDetail(nameof(date), "La fecha es obligatoria.");
 
             var appointments = await _persistence.GetFiltered<Appointment>(
                 a =>
@@ -114,8 +117,7 @@ namespace Dsw2026Tpi.Application.Services
             var dniString = dni.ToString();
             var today = DateTime.Today;
 
-            var appointments = await _persistence.GetFiltered<Appointment>(a => a.Patient!.Dni == dniString && a.Status == AppointmentStatus.BOOKED && a.AvailabilitySlot!.SlotDate >= today,
-                                                                           "AvailabilitySlot.AvailabilityRule");
+            var appointments = await _persistence.GetFiltered<Appointment>(a => a.Patient!.Dni == dniString && a.Status == AppointmentStatus.BOOKED && a.AvailabilitySlot!.SlotDate >= today,"AvailabilitySlot.AvailabilityRule");
             if (appointments is null)
                 return [];
 

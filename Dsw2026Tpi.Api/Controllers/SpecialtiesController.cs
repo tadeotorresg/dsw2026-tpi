@@ -45,10 +45,10 @@ public class SpecialtiesController : AppController
 
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = Policies.AdminPolicy)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Delete(Guid id)
     {
         await _specialtyService.DeleteSpecialty(id);
-        return NoContent();
+        return Ok();
     }
 }

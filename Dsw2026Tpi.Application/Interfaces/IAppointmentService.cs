@@ -7,7 +7,7 @@ public interface IAppointmentService
 {
     Task<AppointmentModel.Response> CreateAppointment(AppointmentModel.Request request);
     Task<IEnumerable<AppointmentModel.Response>> GetPatientAppointments(long? dni);
-    Task CancelAppointment(Guid id);
+    Task CancelAppointment(Guid id, string dniDelToken);
     Task<IEnumerable<SearchModel.Response>> GetDailyAppointments(DateOnly? date);
     Task<Pagination<SearchModel.Response>> SearchAppointments(SearchModel.Request request);
 }

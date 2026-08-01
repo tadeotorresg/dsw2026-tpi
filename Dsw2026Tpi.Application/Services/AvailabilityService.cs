@@ -176,7 +176,7 @@ namespace Dsw2026Tpi.Application.Services
         private static AvailabilityModel.Response MapResponse(AvailabilityRule rule)
         {
             return new AvailabilityModel.Response(
-                rule.Id,
+                rule.DoctorId,
                 DayOfWeekConverter.GetDayName(rule.DayOfWeek),
                 rule.StartTime.ToString(@"hh\:mm"),
                 rule.EndTime.ToString(@"hh\:mm"));

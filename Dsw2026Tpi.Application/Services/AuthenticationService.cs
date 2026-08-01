@@ -128,7 +128,7 @@ public class AuthenticationService : IAuthenticationService
             throw new AuthenticationException();
         }
 
-        var token = _jwtService.GenerateToken(user.UserName!, Roles.Patient);
+        var token = _jwtService.GenerateToken(user.UserName!, Roles.Patient, dniString);
 
         _logger.LogInformation("Inicio de sesion de paciente exitoso: {Email}", request.Email);
 

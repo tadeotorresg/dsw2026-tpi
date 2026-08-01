@@ -1,6 +1,7 @@
 using Dsw2026Tpi.Api.Configurations;
 using Dsw2026Tpi.Api.Middlewares;
 using Serilog;
+using System.Text.Json;
 
 namespace Dsw2026Tpi.Api;
 public class Program
@@ -25,7 +26,11 @@ public class Program
             builder.Services.AddApplicationPersistence(builder.Configuration);
             builder.Services.AddAppCors(builder.Configuration);
             builder.Services.AddAppDependencies();
-            builder.Services.AddControllers();
+            builder.Services.AddControllers().AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.PropertyNamingPolicy =JsonNamingPolicy.CamelCase;
+                });
+
             builder.Services.AddHealthChecks();
 
             builder.Services.AddAppRateLimiting(builder.Configuration);
