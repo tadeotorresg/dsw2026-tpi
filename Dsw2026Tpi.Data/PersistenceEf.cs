@@ -67,11 +67,10 @@ public class PersistenceEf: IPersistence
         var currentIndex = requestedPage - 1;
 
         var filtered = Include(_context.Set<T>(), includes)
-                 .Where(predicate)
-                 .OrderBy(sortOrder);
+            .Where(predicate)
+            .OrderBy(sortOrder);
 
         var total = await filtered.CountAsync();
-
         
         async Task<Pagination<T>> GetPage(int index)
         {

@@ -54,6 +54,7 @@ public class DoctorService : IDoctorService
             .Select(MapAvailabilityResponse)
             .ToList();
     }
+
     public async Task<DoctorModel.Response> CreateDoctor (DoctorModel.Request request)
     {
         if (!request.Name.IsNameValid())

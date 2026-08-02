@@ -52,7 +52,8 @@ public class AvailabilityRule: SoftDeletableEntity
                 var slotEndTime = currentTime.Add(SlotDuration);
                 var slot = new AvailabilitySlot(Id, date, currentTime, slotEndTime);
 
-                slot.CreatedAt = DateTime.Now; 
+                slot.CreatedAt = DateTime.Now;
+                slot.UpdatedAt = DateTime.Now;
 
                 Slots.Add(slot);
 

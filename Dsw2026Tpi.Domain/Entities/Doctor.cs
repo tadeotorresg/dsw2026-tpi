@@ -20,6 +20,7 @@ public class Doctor : SoftDeletableEntity
         Name = name;
         LicenseNumber = licenseNumber;
         Specialty = specialty;
+        SpecialtyId = specialty.Id;
     }
     public void UpdateProfile(string name, string? licenseNumber, Specialty specialty)
     {

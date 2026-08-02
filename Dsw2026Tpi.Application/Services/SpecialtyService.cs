@@ -1,9 +1,10 @@
 ﻿using Dsw2026Tpi.Application.Dtos;
 using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.CrossCutting.Exceptions;
+using Dsw2026Tpi.CrossCutting.Helpers;
+using Dsw2026Tpi.CrossCutting.Resources;
 using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
-using Dsw2026Tpi.CrossCutting.Helpers;
 
 namespace Dsw2026Tpi.Application.Services
 {
@@ -26,7 +27,9 @@ namespace Dsw2026Tpi.Application.Services
             if (!request.Description.IsDescriptionValid())
                 throw new ValidationException()
                     .WithDetail(nameof(request.Description), "Descripción inválida, entre 10 y 100 caracteres.");
-            
+
+            await ValidateUniqueName(request.Name);
+
             var specialty = new Specialty(request.Name, request.Description);
 
             await _persistence.Add(specialty);
@@ -61,6 +64,8 @@ namespace Dsw2026Tpi.Application.Services
             var specialty = await _persistence.GetById<Specialty>(id)
                 ?? throw new EntityNotFoundException(nameof(Specialty));
 
+            await ValidateUniqueName(request.Name, specialty.Id);
+
             specialty.UpdateDetails(request.Name, request.Description);
 
             await _persistence.Update(specialty);
@@ -85,6 +90,16 @@ namespace Dsw2026Tpi.Application.Services
                 s.Id,
                 s.Name,
                 s.Description);
+        }
+
+        private async Task ValidateUniqueName(string name, Guid? currentSpecialtyId = null)
+        {
+            var existingSpecialty = await _persistence.First<Specialty>(specialty => specialty.Name == name &&
+            (!currentSpecialtyId.HasValue || specialty.Id != currentSpecialtyId.Value));
+
+            if (existingSpecialty is not null)
+                throw new ConflictException(ErrorCodes.SPECIALTY_CONFLICT, nameof(ErrorCodes.SPECIALTY_CONFLICT))
+                    .WithDetail(nameof(name), "Ya existe una especialidad con ese nombre.");
         }
         #endregion
     }

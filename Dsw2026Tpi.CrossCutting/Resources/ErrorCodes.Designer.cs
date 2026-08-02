@@ -133,6 +133,15 @@ namespace Dsw2026Tpi.CrossCutting.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Ya existe una especialidad activa con el mismo nombre.
+        /// </summary>
+        public static string SPECIALTY_CONFLICT {
+            get {
+                return ResourceManager.GetString("SPECIALTY_CONFLICT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Se superó el límite de solicitudes permitidas. Intente nuevamente en unos instantes..
         /// </summary>
         public static string TOO_MANY_REQUESTS {
