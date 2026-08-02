@@ -15,13 +15,13 @@ public class Doctor : SoftDeletableEntity
 #pragma warning restore CS8618
     #endregion
 
-    public Doctor(string name, string licenseNumber, Specialty specialty, Guid? id = null) : base(id)
+    public Doctor(string name, string? licenseNumber, Specialty specialty, Guid? id = null) : base(id)
     {
         Name = name;
         LicenseNumber = licenseNumber;
         Specialty = specialty;
     }
-    public void UpdateProfile(string name, string licenseNumber, Specialty specialty)
+    public void UpdateProfile(string name, string? licenseNumber, Specialty specialty)
     {
         Name = name;
         LicenseNumber = licenseNumber;

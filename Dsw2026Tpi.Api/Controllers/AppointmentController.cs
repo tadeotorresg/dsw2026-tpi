@@ -66,7 +66,7 @@ public class AppointmentController : AppController
     public async Task<IActionResult> SearchAppointments(
         [FromQuery] Guid? specialtyId,
         [FromQuery] Guid? doctorId,
-        [FromQuery] string? dni,
+        [FromQuery] long? dni,
         [FromQuery] DateOnly? date,
         [FromQuery] int pageSize = 10,
         [FromQuery] int pageIndex = 1)

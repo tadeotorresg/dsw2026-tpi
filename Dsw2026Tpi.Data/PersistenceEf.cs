@@ -62,7 +62,9 @@ public class PersistenceEf: IPersistence
     public async Task<Pagination<T>> Paginate<T, TKey>(int pageSize, int pageIndex, Expression<Func<T, bool>> predicate, Expression<Func<T, TKey>> sortOrder, params string[] includes) where T : EntityBase
     {
         pageSize = Math.Abs(pageSize);
-        pageIndex = Math.Abs(pageIndex) == 0 ? 0 : Math.Abs(pageIndex) - 1;
+        
+        var requestedPage = Math.Abs(pageIndex) == 0 ? 1 : Math.Abs(pageIndex);
+        var currentIndex = requestedPage - 1;
 
         var filtered = Include(_context.Set<T>(), includes)
                  .Where(predicate)
@@ -71,39 +73,39 @@ public class PersistenceEf: IPersistence
         var total = await filtered.CountAsync();
 
         
-        async Task<Pagination<T>> GetPage(int skip, int take)
+        async Task<Pagination<T>> GetPage(int index)
         {
-            var data = await filtered.Skip(skip)
-                    .Take(take)
+            var data = await filtered.Skip(index * pageSize)
+                    .Take(pageSize)
                     .ToListAsync();
 
-            return new Pagination<T>(pageSize, pageIndex, data, total);
+            return new Pagination<T>(pageSize, index + 1, data, total);
         }
         
         //la pagina existe
-        if (total > pageSize * pageIndex)
+        if (total > pageSize * currentIndex)
         {
-            return await GetPage(pageIndex * pageSize, pageSize);
+            return await GetPage(currentIndex);
         }
 
         //solo hay una pagina
         if (total < pageSize)
         {
-            return new Pagination<T>(pageSize, pageIndex, await filtered.ToListAsync(), total);
+            return new Pagination<T>(pageSize, 1, await filtered.ToListAsync(), total);
         }
 
-        var targetPageIndex = pageIndex - 1;
+        var targetPageIndex = currentIndex - 1;
 
         while (true)
         {
             if (total > targetPageIndex * pageSize)
             {
-                return await GetPage(targetPageIndex * pageSize, pageSize);
+                return await GetPage(targetPageIndex);
             }
 
             targetPageIndex--;
 
-            if (targetPageIndex < 0) return new Pagination<T>(pageSize, 0, [], 0);
+            if (targetPageIndex < 0) return new Pagination<T>(pageSize, 1, [], 0);
         }
     }
 

@@ -4,8 +4,10 @@ using Dsw2026Tpi.CrossCutting.Exceptions;
 using Dsw2026Tpi.CrossCutting.Helpers;
 using Dsw2026Tpi.CrossCutting.Resources;
 using Dsw2026Tpi.Domain.Entities;
+using Dsw2026Tpi.Domain.Enums;
 using Dsw2026Tpi.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
+using static Dsw2026Tpi.Application.Dtos.AvailabilityModel; 
 
 namespace Dsw2026Tpi.Application.Services
 {
@@ -66,6 +68,7 @@ namespace Dsw2026Tpi.Application.Services
             var doctor = await ValidateDoctor(request.DoctorId);
 
             var today = DateTime.Today;
+            var now = DateTime.Now;
             short year = (short)today.Year;
             byte month = (byte)today.Month;
 
@@ -74,38 +77,78 @@ namespace Dsw2026Tpi.Application.Services
             ValidateDays(request.Days);
 
             var existingRules = await _persistence.GetFiltered<AvailabilityRule>
-                (r => r.DoctorId == request.DoctorId && r.Month == month && r.Year == year && r.Deleted == false, "Slots");
+                (r => r.DoctorId == request.DoctorId && r.Month == month && r.Year == year && !r.Deleted, nameof(AvailabilityRule.Slots)) ?? [];
 
-            if (existingRules != null)
+            if (!existingRules.Any())
+                throw new EntityNotFoundException(nameof(AvailabilityRule));
+
+            var requestedRules = request.Days
+                .Select(day => new
+                {
+                    DayOfWeek = (byte)DayOfWeekConverter.Parse(day.Day),
+                    day.StartTime,
+                    day.EndTime
+                })
+                .ToList();
+
+            foreach (var rule in existingRules)
             {
-                foreach (var rule in existingRules)
+                var isStillRequested = requestedRules.Any(requested =>
+                requested.DayOfWeek == rule.DayOfWeek &&
+                requested.StartTime == rule.StartTime &&
+                requested.EndTime == rule.EndTime);
+
+                if (isStillRequested)
+                    continue;
+
+                foreach (var slot in rule.Slots)
+                {
+                    var slotDateTime = slot.SlotDate.Date.Add(slot.StartTime);
+                    var canBeDeleted = slot.Status == SlotStatus.AVAILABLE && slotDateTime > now;
+                    
+                    if (canBeDeleted)
+                    {
+                        slot.SetDeleted();
+                        await _persistence.Update(slot);
+                    }
+                }
+
+                if (rule.Slots.All(slot => slot.Deleted))
                 {
                     rule.SetDeleted();
                     await _persistence.Update(rule);
-
-                    if (rule.Slots != null)
-                    {
-                        foreach (var slot in rule.Slots)
-                        {
-                            slot.SetDeleted();
-                            await _persistence.Update(slot);
-                        }
-                    }
                 }
             }
-            CheckOverlaps(request.Days, new List<AvailabilityRule>());
 
             var responses = new List<AvailabilityModel.Response>();
-            foreach (var dayReq in request.Days)
+            foreach (var dayRequest in request.Days)
             {
-                var dayOfWeek = DayOfWeekConverter.Parse(dayReq.Day);
-                var rule = new AvailabilityRule(request.DoctorId, month, year, (byte)dayOfWeek, dayReq.StartTime, dayReq.EndTime);
+                var dayOfWeek = (byte)DayOfWeekConverter.Parse(dayRequest.Day);
+                var existingRule = existingRules.FirstOrDefault(r =>
+                !r.Deleted &&
+                r.DayOfWeek == dayOfWeek &&
+                r.StartTime == dayRequest.StartTime &&
+                r.EndTime == dayRequest.EndTime);
 
-                rule.GenerateSlotsForRestOfMonth(today, holidays);
-
-                if (rule.Slots.Any())
+                if (existingRule is not null)
                 {
-                    var createdRule = await _persistence.Add(rule);
+                    responses.Add(MapResponse(existingRule));
+                    continue;
+                }
+
+                var newRule = new AvailabilityRule(
+                    request.DoctorId,
+                    month,
+                    year,
+                    dayOfWeek,
+                    dayRequest.StartTime,
+                    dayRequest.EndTime);
+
+                newRule.GenerateSlotsForRestOfMonth(today, holidays);
+
+                if (newRule.Slots.Any())
+                {
+                    var createdRule = await _persistence.Add(newRule);
 
                     responses.Add(MapResponse(createdRule));
                 } 
@@ -124,6 +167,8 @@ namespace Dsw2026Tpi.Application.Services
 
             foreach (var day in days)
             {
+                DayOfWeekConverter.Parse(day.Day);
+
                 if (day.StartTime >= day.EndTime) 
                     throw new ValidationException()
                         .WithDetail(nameof(day.StartTime), "La hora de inicio debe ser menor que la de fin.");

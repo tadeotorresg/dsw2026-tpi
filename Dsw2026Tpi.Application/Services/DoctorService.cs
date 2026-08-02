@@ -62,7 +62,7 @@ public class DoctorService : IDoctorService
 
         if (!request.LicenseNumber.IsLicenseNumberValid())
             throw new ValidationException()
-                .WithDetail(nameof(request.LicenseNumber),"Debe indicar un número de matrícula.");     
+                .WithDetail(nameof(request.LicenseNumber),"La matrícula no puede estar vacía.");     
         
         var specialty = await _persistence.GetById<Specialty>(request.SpecialtyId)
             ?? throw new EntityNotFoundException(nameof(Specialty));
@@ -80,9 +80,9 @@ public class DoctorService : IDoctorService
             throw new ValidationException()
                 .WithDetail(nameof(request.Name), "El nombre debe tener entre 3 y 100 caracteres.");
 
-        if (string.IsNullOrWhiteSpace(request.LicenseNumber))
+        if (!request.LicenseNumber.IsLicenseNumberValid())
             throw new ValidationException()
-                .WithDetail(nameof(request.LicenseNumber),"La matrícula es obligatoria.");
+                .WithDetail(nameof(request.LicenseNumber),"La matrícula no puede estar vacía.");
         
         var specialty = await _persistence.GetById<Specialty>(request.SpecialtyId)
             ?? throw new EntityNotFoundException(nameof(Specialty));

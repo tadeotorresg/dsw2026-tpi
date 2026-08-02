@@ -115,12 +115,17 @@ namespace Dsw2026Tpi.Application.Services
                     .WithDetail(nameof(dni),"Debe indicar un DNI válido.");
   
             var dniString = dni.ToString();
-            var today = DateTime.Today;
 
-            var appointments = await _persistence.GetFiltered<Appointment>(a => a.Patient!.Dni == dniString && a.Status == AppointmentStatus.BOOKED && a.AvailabilitySlot!.SlotDate >= today,"AvailabilitySlot.AvailabilityRule");
+            var now = DateTime.Now;
+            var today = now.Date;
+            var currentTime = now.TimeOfDay;
+
+            var appointments = await _persistence.GetFiltered<Appointment>(a => a.Patient!.Dni == dniString && a.Status == AppointmentStatus.BOOKED 
+                && (a.AvailabilitySlot!.SlotDate > today || (a.AvailabilitySlot.SlotDate == today && a.AvailabilitySlot.StartTime >= currentTime)), "AvailabilitySlot.AvailabilityRule");
+            
             if (appointments is null)
                 return [];
-
+            
             return appointments 
                 .OrderBy(appointment => appointment.AvailabilitySlot!.SlotDate)
                 .ThenBy(appointment => appointment.AvailabilitySlot!.StartTime)
@@ -141,7 +146,7 @@ namespace Dsw2026Tpi.Application.Services
                 a =>
                     (!request.SpecialtyId.HasValue || a.AvailabilitySlot!.AvailabilityRule!.Doctor!.SpecialtyId == request.SpecialtyId.Value) &&
                     (!request.DoctorId.HasValue || a.AvailabilitySlot!.AvailabilityRule!.DoctorId == request.DoctorId.Value) &&
-                    (string.IsNullOrWhiteSpace(request.Dni) || a.Patient!.Dni.Contains(request.Dni)) &&
+                    (!request.Dni.HasValue || a.Patient!.Dni == request.Dni.Value.ToString()) &&
 
                     (!request.Date.HasValue ||
                         (a.AvailabilitySlot!.SlotDate.Year == request.Date.Value.Year &&
@@ -236,8 +241,8 @@ namespace Dsw2026Tpi.Application.Services
 
             return new SearchModel.Response(
                 appointment.Id,
-                 appointment.Status.ToString(),
-                patient is null ? null: new SearchModel.PatientDto(long.Parse(patient.Dni), patient.FullName),
+                appointment.Status.ToString(),
+                patient is null ? null: new SearchModel.PatientDto(long.Parse(patient.Dni), patient.FullName ?? string.Empty),
                 doctor is null? null: new SearchModel.DoctorDto(doctor.Id,doctor.Name,
                 specialty is null? null: new SearchModel.SpecialtyDto(specialty.Id, specialty.Name)));
         }

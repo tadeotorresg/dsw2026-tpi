@@ -29,6 +29,9 @@ public static class ValidationsExtensions
 
     public static bool IsLicenseNumberValid(this string? value)
     {
+        if (value is null)
+            return true;
+
         return !string.IsNullOrWhiteSpace(value);
     }
 
