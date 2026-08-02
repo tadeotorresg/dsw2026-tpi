@@ -144,6 +144,9 @@
   <data name="VALIDATION_ERROR" xml:space="preserve">
     <value>Uno o más errores de validación ocurrieron</value>
   </data>
+  <data name="SPECIALTY_CONFLICT" xml:space="preserve">
+    <value>Ya existe una especialidad activa con el mismo nombre</value>
+  </data>
   <data name="APPOINTMENT_CONFLICT" xml:space="preserve">
     <value>Existe un problema con la disponiblidad del turno</value>
   </data>

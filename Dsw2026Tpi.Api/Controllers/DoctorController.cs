@@ -64,11 +64,11 @@ public class DoctorController : AppController
 
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = Policies.AdminPolicy)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Delete(Guid id)
     {
         await _service.DeleteDoctor(id);
 
-        return NoContent();
+        return Ok("ok");
     }
 }

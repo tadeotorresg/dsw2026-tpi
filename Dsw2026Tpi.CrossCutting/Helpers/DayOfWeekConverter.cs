@@ -29,10 +29,10 @@ namespace Dsw2026Tpi.CrossCutting.Helpers
             {
                 "LUNES" => DayOfWeek.Monday,
                 "MARTES" => DayOfWeek.Tuesday,
-                "MIERCOLES" => DayOfWeek.Wednesday,
+                "MIERCOLES" or "MIÉRCOLES" => DayOfWeek.Wednesday,
                 "JUEVES" => DayOfWeek.Thursday,
                 "VIERNES" => DayOfWeek.Friday,
-                "SABADO" => DayOfWeek.Saturday,
+                "SABADO" or "SÁBADO" => DayOfWeek.Saturday,
                 "DOMINGO" => DayOfWeek.Sunday,
                 _ => throw new ValidationException()
                         .WithDetail(nameof(day), "El día no es válido.")

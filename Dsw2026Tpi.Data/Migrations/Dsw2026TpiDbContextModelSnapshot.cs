@@ -107,7 +107,8 @@ namespace Dsw2026Tpi.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DoctorId", "Year", "Month", "DayOfWeek", "StartTime", "EndTime")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[Deleted] = 0");
 
                     b.ToTable("AvailabilityRules", (string)null);
                 });
@@ -150,7 +151,8 @@ namespace Dsw2026Tpi.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AvailabilityRuleId", "SlotDate", "StartTime")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[Deleted] = 0");
 
                     b.ToTable("AvailabilitySlots", (string)null);
                 });
@@ -185,7 +187,7 @@ namespace Dsw2026Tpi.Data.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(100)");
 
-                    b.Property<Guid?>("SpecialityId")
+                    b.Property<Guid?>("SpecialtyId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -193,7 +195,7 @@ namespace Dsw2026Tpi.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SpecialityId");
+                    b.HasIndex("SpecialtyId");
 
                     b.ToTable("Doctors", (string)null);
                 });
@@ -240,7 +242,7 @@ namespace Dsw2026Tpi.Data.Migrations
                     b.ToTable("Patients", (string)null);
                 });
 
-            modelBuilder.Entity("Dsw2026Tpi.Domain.Entities.Speciality", b =>
+            modelBuilder.Entity("Dsw2026Tpi.Domain.Entities.Specialty", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -272,9 +274,10 @@ namespace Dsw2026Tpi.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Name")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[Deleted] = 0");
 
-                    b.ToTable("Specialities", (string)null);
+                    b.ToTable("Specialties", (string)null);
                 });
 
             modelBuilder.Entity("Dsw2026Tpi.Domain.Entities.Appointment", b =>
@@ -320,12 +323,12 @@ namespace Dsw2026Tpi.Data.Migrations
 
             modelBuilder.Entity("Dsw2026Tpi.Domain.Entities.Doctor", b =>
                 {
-                    b.HasOne("Dsw2026Tpi.Domain.Entities.Speciality", "Speciality")
+                    b.HasOne("Dsw2026Tpi.Domain.Entities.Specialty", "Specialty")
                         .WithMany()
-                        .HasForeignKey("SpecialityId")
+                        .HasForeignKey("SpecialtyId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.Navigation("Speciality");
+                    b.Navigation("Specialty");
                 });
 
             modelBuilder.Entity("Dsw2026Tpi.Domain.Entities.AvailabilityRule", b =>

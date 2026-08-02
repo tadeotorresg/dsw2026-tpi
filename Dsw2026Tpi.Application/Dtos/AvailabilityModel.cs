@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace Dsw2026Tpi.Application.Dtos;
 
-namespace Dsw2026Tpi.Application.Dtos
+public class AvailabilityModel
 {
-    public class AvailabilityModel
-    {
-        public record DayRequest(string Day, TimeSpan StartTime, TimeSpan EndTime);
-        public record Request(Guid DoctorId, List<DayRequest> Days);
+    public record DayRequest(string Day, TimeSpan StartTime, TimeSpan EndTime);
+    public record Request(Guid DoctorId, List<DayRequest> Days);
 
-        public record Response(Guid Id, string Day, string StartTime, string EndTime);
-    }
+    public record Response(Guid Id, string Day, string StartTime, string EndTime);
 }
