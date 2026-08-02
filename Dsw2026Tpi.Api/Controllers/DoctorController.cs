@@ -69,6 +69,6 @@ public class DoctorController : AppController
     {
         await _service.DeleteDoctor(id);
 
-        return Ok();
+        return Ok("ok");
     }
 }

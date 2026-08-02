@@ -186,21 +186,19 @@ namespace Dsw2026Tpi.Application.Services
                 ?? throw new EntityNotFoundException(nameof(Patient));
         }
 
-        private async Task<AvailabilitySlot> ValidateSlot(
-            Guid availabilityId,
-            Guid doctorId)
+        private async Task<AvailabilitySlot> ValidateSlot(Guid availabilitySlotId, Guid doctorId)
         {
-            if (availabilityId == Guid.Empty)
+            if (availabilitySlotId == Guid.Empty)
                 throw new ValidationException()
-                    .WithDetail(nameof(availabilityId),"Debe indicar un AvailabilityId válido.");
+                    .WithDetail(nameof(availabilitySlotId),"Debe indicar un AvailabilityId válido.");
 
-            var slot = await _persistence.GetById<AvailabilitySlot>(availabilityId,
+            var slot = await _persistence.GetById<AvailabilitySlot>(availabilitySlotId,
                 nameof(AvailabilitySlot.AvailabilityRule))
                 ?? throw new EntityNotFoundException(nameof(AvailabilitySlot));
 
             if (slot.AvailabilityRule!.DoctorId != doctorId)
                 throw new ValidationException()
-                    .WithDetail(nameof(availabilityId),"El turno no pertenece al doctor indicado.");
+                    .WithDetail(nameof(availabilitySlotId),"El turno no pertenece al doctor indicado.");
 
             return slot;
         }
@@ -232,18 +230,16 @@ namespace Dsw2026Tpi.Application.Services
 
         private static SearchModel.Response MapSearchResponse(Appointment appointment)
         {
-            var slot = appointment.AvailabilitySlot!;
-            var doctor = slot.AvailabilityRule!.Doctor!;
+            var doctor = appointment.AvailabilitySlot!.AvailabilityRule!.Doctor;
+            var specialty = doctor?.Specialty;
+            var patient = appointment.Patient;
 
             return new SearchModel.Response(
                 appointment.Id,
-                doctor.Specialty!.Name,
-                doctor.Name,
-                appointment.Patient!.Dni,
-                DateOnly.FromDateTime(slot.SlotDate),
-                slot.StartTime.ToString(@"hh\:mm"),
-                slot.EndTime.ToString(@"hh\:mm"),
-                appointment.Status.ToString());
+                 appointment.Status.ToString(),
+                patient is null ? null: new SearchModel.PatientDto(long.Parse(patient.Dni), patient.FullName),
+                doctor is null? null: new SearchModel.DoctorDto(doctor.Id,doctor.Name,
+                specialty is null? null: new SearchModel.SpecialtyDto(specialty.Id, specialty.Name)));
         }
         #endregion
     }

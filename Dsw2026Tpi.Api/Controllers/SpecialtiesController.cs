@@ -49,6 +49,6 @@ public class SpecialtiesController : AppController
     public async Task<IActionResult> Delete(Guid id)
     {
         await _specialtyService.DeleteSpecialty(id);
-        return Ok();
+        return Ok("ok");
     }
 }

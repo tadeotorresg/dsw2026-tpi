@@ -48,7 +48,7 @@ public class AppointmentController : AppController
     {
         var dniDelToken = User.GetAuthenticatedDni();
         await _appointmentService.CancelAppointment(id, dniDelToken);
-        return Ok();
+        return Ok("ok");
     }
 
     [HttpGet]
