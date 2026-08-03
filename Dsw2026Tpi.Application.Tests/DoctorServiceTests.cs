@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using Dsw2026Tpi.Application.Dtos;
+﻿using Dsw2026Tpi.Application.Dtos;
 using Dsw2026Tpi.Application.Services;
 using Dsw2026Tpi.CrossCutting.Exceptions;
 using Dsw2026Tpi.Domain.Entities;
@@ -23,8 +22,7 @@ namespace Dsw2026Tpi.Application.Tests
         {
             var especialidad = new Specialty("Pediatría", "Atención de niños y adolescentes", _testSpecialtyId);
 
-            _mockPersistence
-                .GetById<Specialty>(Arg.Any<Guid>(), Arg.Any<string[]>())
+            _mockPersistence.GetById<Specialty>(Arg.Any<Guid>(), Arg.Any<string[]>())
                 .Returns(especialidad);
 
             var service = new DoctorService(_mockPersistence);
@@ -39,5 +37,23 @@ namespace Dsw2026Tpi.Application.Tests
             Assert.Equal(_testSpecialtyId, response.Specialty?.Id);
         }
 
+        [Fact]
+        public async Task CreateDoctor_CuandoLaEspecialidadNoExiste_EntoncesGeneraUnaExcepcion()
+        {
+            Specialty? especialidadInexistente = null;
+
+            _mockPersistence.GetById<Specialty>(Arg.Any<Guid>(), Arg.Any<string[]>())
+                .Returns(especialidadInexistente);
+
+            var service = new DoctorService(_mockPersistence);
+            var request = new DoctorModel.Request(TestNombre, TestMatricula, _testSpecialtyId);
+
+            await Assert.ThrowsAsync<EntityNotFoundException>(async () =>
+            {
+                await service.CreateDoctor(request);
+            });
+
+            await _mockPersistence.DidNotReceive().Add(Arg.Any<Doctor>());
+        }
     }
 }
