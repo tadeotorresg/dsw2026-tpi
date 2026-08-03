@@ -7,7 +7,6 @@ using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Enums;
 using Dsw2026Tpi.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
-using static Dsw2026Tpi.Application.Dtos.AvailabilityModel; 
 
 namespace Dsw2026Tpi.Application.Services
 {
@@ -25,7 +24,7 @@ namespace Dsw2026Tpi.Application.Services
 
         public async Task <IEnumerable<AvailabilityModel.Response>> CreateAvailability (AvailabilityModel.Request request)
         {
-            var doctor = await ValidateDoctor(request.DoctorId);
+            await ValidateDoctor(request.DoctorId);
 
             var today = DateTime.Today;
             short year = (short)today.Year;
@@ -65,7 +64,7 @@ namespace Dsw2026Tpi.Application.Services
 
         public async Task <IEnumerable<AvailabilityModel.Response>> UpdateAvailability(AvailabilityModel.Request request)
         {
-            var doctor = await ValidateDoctor(request.DoctorId);
+            await ValidateDoctor(request.DoctorId);
 
             var today = DateTime.Today;
             var now = DateTime.Now;

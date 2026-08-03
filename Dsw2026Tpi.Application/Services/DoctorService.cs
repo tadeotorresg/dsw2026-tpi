@@ -34,9 +34,8 @@ public class DoctorService : IDoctorService
         if (doctorId == Guid.Empty) 
             throw new ValidationException()
                 .WithDetail(nameof(doctorId), "Debe indicar un DoctorId válido.");
-        
-        var doctor = await _persistence.GetById<Doctor>(doctorId)
-            ?? throw new EntityNotFoundException(nameof(Doctor));
+
+        await GetDoctor(doctorId);
 
         var mes = (byte)DateTime.Today.Month;
         var año = (short)DateTime.Today.Year;
@@ -57,16 +56,7 @@ public class DoctorService : IDoctorService
 
     public async Task<DoctorModel.Response> CreateDoctor (DoctorModel.Request request)
     {
-        if (!request.Name.IsNameValid())
-            throw new ValidationException()
-                .WithDetail(nameof(request.Name), "El nombre debe tener entre 3 y 100 caracteres.");
-
-        if (!request.LicenseNumber.IsLicenseNumberValid())
-            throw new ValidationException()
-                .WithDetail(nameof(request.LicenseNumber),"La matrícula no puede estar vacía.");     
-        
-        var specialty = await _persistence.GetById<Specialty>(request.SpecialtyId)
-            ?? throw new EntityNotFoundException(nameof(Specialty));
+        var specialty = await ValidateRequest(request);
 
         var doctor = new Doctor(request.Name, request.LicenseNumber, specialty);
 
@@ -77,19 +67,9 @@ public class DoctorService : IDoctorService
 
     public async Task<DoctorModel.Response> UpdateDoctor (Guid id, DoctorModel.Request request)
     {
-        if (!request.Name.IsNameValid())
-            throw new ValidationException()
-                .WithDetail(nameof(request.Name), "El nombre debe tener entre 3 y 100 caracteres.");
+        var specialty = await ValidateRequest(request);
 
-        if (!request.LicenseNumber.IsLicenseNumberValid())
-            throw new ValidationException()
-                .WithDetail(nameof(request.LicenseNumber),"La matrícula no puede estar vacía.");
-        
-        var specialty = await _persistence.GetById<Specialty>(request.SpecialtyId)
-            ?? throw new EntityNotFoundException(nameof(Specialty));
-
-        var doctor = await _persistence.GetById<Doctor>(id)
-            ?? throw new EntityNotFoundException(nameof(Doctor));
+        var doctor = await GetDoctor(id);
 
         doctor.UpdateProfile(request.Name, request.LicenseNumber, specialty);
 
@@ -100,8 +80,7 @@ public class DoctorService : IDoctorService
 
     public async Task DeleteDoctor(Guid id)
     {
-        var doctor = await _persistence.GetById<Doctor>(id)
-            ?? throw new EntityNotFoundException(nameof(Doctor));
+        var doctor = await GetDoctor(id);
 
         doctor.SetDeleted();
 
@@ -109,6 +88,25 @@ public class DoctorService : IDoctorService
     }
 
     #region Private Methods
+
+    private async Task<Doctor> GetDoctor(Guid doctorId)
+    {
+        return await _persistence.GetById<Doctor>(doctorId)
+            ?? throw new EntityNotFoundException(nameof(Doctor));
+    }
+    private async Task<Specialty> ValidateRequest (DoctorModel.Request request)
+    {
+        if (!request.Name.IsNameValid())
+            throw new ValidationException()
+                .WithDetail(nameof(request.Name), "El nombre debe tener entre 3 y 100 caracteres.");
+
+        if (!request.LicenseNumber.IsLicenseNumberValid())
+            throw new ValidationException()
+                .WithDetail(nameof(request.LicenseNumber), "La matrícula no puede estar vacía.");
+        
+        return await _persistence.GetById<Specialty>(request.SpecialtyId)
+            ?? throw new EntityNotFoundException(nameof(Specialty));
+    }
     private static DoctorModel.Response MapResponse(Doctor d)
     {
         return new DoctorModel.Response(

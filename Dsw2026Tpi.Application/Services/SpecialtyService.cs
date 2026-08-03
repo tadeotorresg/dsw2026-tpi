@@ -19,14 +19,8 @@ namespace Dsw2026Tpi.Application.Services
         }
 
         public async Task<SpecialtyModel.Response> CreateSpecialty(SpecialtyModel.Request request)
-        { 
-            if (!request.Name.IsNameValid())
-                throw new ValidationException()
-                    .WithDetail(nameof(request.Name), "Nombre inválido, entre 3 y 100 caracteres.");
-
-            if (!request.Description.IsDescriptionValid())
-                throw new ValidationException()
-                    .WithDetail(nameof(request.Description), "Descripción inválida, entre 10 y 100 caracteres.");
+        {
+            ValidateRequest(request);
 
             await ValidateUniqueName(request.Name);
 
@@ -53,14 +47,7 @@ namespace Dsw2026Tpi.Application.Services
 
         public async Task<SpecialtyModel.Response> UpdateSpecialty(Guid id, SpecialtyModel.Request request)
         {
-            if (!request.Name.IsNameValid())
-                throw new ValidationException()
-                    .WithDetail(nameof(request.Name), "El nombre es inválido. El campo debe tener entre 3 y 100 caracteres.");
-
-            if (!request.Description.IsDescriptionValid())
-                throw new ValidationException()
-                    .WithDetail(nameof(request.Description), "La descripción es inválida. El campo debe tener entre 10 y 100 caracteres.");
-
+            ValidateRequest(request);
             var specialty = await _persistence.GetById<Specialty>(id)
                 ?? throw new EntityNotFoundException(nameof(Specialty));
 
@@ -84,6 +71,18 @@ namespace Dsw2026Tpi.Application.Services
         }
 
         #region Private Methods
+
+        private static void ValidateRequest(SpecialtyModel.Request request)
+        {
+
+            if (!request.Name.IsNameValid())
+                throw new ValidationException()
+                    .WithDetail(nameof(request.Name), "El nombre es inválido. El campo debe tener entre 3 y 100 caracteres.");
+
+            if (!request.Description.IsDescriptionValid())
+                throw new ValidationException()
+                    .WithDetail(nameof(request.Description), "La descripción es inválida. El campo debe tener entre 10 y 100 caracteres.");
+        }
         private static SpecialtyModel.Response MapResponse(Specialty s)
         {
             return new SpecialtyModel.Response(
