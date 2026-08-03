@@ -33,5 +33,23 @@ namespace Dsw2026Tpi.Application.Tests
 
             await _mockPersistence.DidNotReceive().Update(Arg.Any<Specialty>());
         }
+
+        [Fact]
+        public async Task DeleteSpecialty_CuandoLaEspecialidadExiste_EntoncesSeMarcaComoEliminadaYNoSeBorra()
+        {
+            var especialidad = new Specialty(TestNombre, TestDescripcion);
+            _mockPersistence.GetById<Specialty>(Arg.Any<Guid>(), Arg.Any<string[]>())
+                .Returns(especialidad);
+
+            var service = new SpecialtyService(_mockPersistence);
+
+            Assert.False(especialidad.Deleted);
+
+            await service.DeleteSpecialty(especialidad.Id);
+            
+            Assert.True(especialidad.Deleted);
+            await _mockPersistence.Received().Update(especialidad);
+            await _mockPersistence.DidNotReceive().Delete(Arg.Any<Specialty>());
+        }
     }
 }
