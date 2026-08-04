@@ -29,8 +29,7 @@ public class DoctorController : AppController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAvailabilities(Guid id)
     {
-        var availabilities =
-            await _service.GetAvailabilities(id);
+        var availabilities =await _service.GetAvailabilities(id);
 
         return Ok(availabilities);
     }
@@ -41,8 +40,7 @@ public class DoctorController : AppController
     public async Task<IActionResult> Create(
         [FromBody] DoctorModel.Request request)
     {
-        var doctor =
-            await _service.CreateDoctor(request);
+        var doctor =await _service.CreateDoctor(request);
 
         return StatusCode(
             StatusCodes.Status201Created,
@@ -56,8 +54,7 @@ public class DoctorController : AppController
         Guid id,
         [FromBody] DoctorModel.Request request)
     {
-        var doctor =
-            await _service.UpdateDoctor(id, request);
+        var doctor =await _service.UpdateDoctor(id, request);
 
         return Ok(doctor);
     }

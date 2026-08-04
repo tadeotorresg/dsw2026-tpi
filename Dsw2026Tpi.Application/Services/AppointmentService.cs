@@ -7,6 +7,8 @@ using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Enums;
 using Dsw2026Tpi.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 
 namespace Dsw2026Tpi.Application.Services
 {
@@ -49,7 +51,21 @@ namespace Dsw2026Tpi.Application.Services
             await _persistence.Update(slot);
 
             var appointment = new Appointment(slot.Id, patient.Id, reason);
-            var createdAppointment = await _persistence.Add(appointment);
+            Appointment createdAppointment; 
+            try
+            {
+                createdAppointment =
+                    await _persistence.Add(appointment);
+            }
+            catch (DbUpdateException ex)
+                when (ex.InnerException is SqlException sqlException &&
+                      (sqlException.Number == 2601 ||
+                       sqlException.Number == 2627))
+            {
+                throw new ConflictException(ErrorCodes.APPOINTMENT_CONFLICT,nameof(ErrorCodes.APPOINTMENT_CONFLICT))
+                    .WithDetail(nameof(request.AvailabilitySlotId),"Turno no disponible.");
+            }
+
             _logger.LogInformation("Turno reservado. Cita: {AppointmentId}, Paciente: {PatientDni}, Médico: {DoctorId}, Fecha: {SlotDate} {StartTime}",
                 appointment.Id, patient.Dni, doctor.Id, slot.SlotDate.ToString("yyyy-MM-dd"), slot.StartTime);
 
