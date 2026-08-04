@@ -51,7 +51,7 @@ namespace Dsw2026Tpi.Application.Services
             await _persistence.Update(slot);
 
             var appointment = new Appointment(slot.Id, patient.Id, reason);
-            var createdAppointment = await _persistence.Add(appointment);
+            Appointment createdAppointment; 
             try
             {
                 createdAppointment =
@@ -62,12 +62,8 @@ namespace Dsw2026Tpi.Application.Services
                       (sqlException.Number == 2601 ||
                        sqlException.Number == 2627))
             {
-                throw new ConflictException(
-                    ErrorCodes.APPOINTMENT_CONFLICT,
-                    nameof(ErrorCodes.APPOINTMENT_CONFLICT))
-                    .WithDetail(
-                        nameof(request.AvailabilitySlotId),
-                        "Turno no disponible.");
+                throw new ConflictException(ErrorCodes.APPOINTMENT_CONFLICT,nameof(ErrorCodes.APPOINTMENT_CONFLICT))
+                    .WithDetail(nameof(request.AvailabilitySlotId),"Turno no disponible.");
             }
 
             _logger.LogInformation("Turno reservado. Cita: {AppointmentId}, Paciente: {PatientDni}, Médico: {DoctorId}, Fecha: {SlotDate} {StartTime}",

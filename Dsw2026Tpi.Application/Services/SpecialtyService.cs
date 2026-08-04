@@ -41,7 +41,6 @@ namespace Dsw2026Tpi.Application.Services
                 s => string.IsNullOrWhiteSpace(name) || s.Name.Contains(name),
                 x => x.Name
             );
-
             return specialties.Map(MapResponse);
         }
 
@@ -74,7 +73,6 @@ namespace Dsw2026Tpi.Application.Services
 
         private static void ValidateRequest(SpecialtyModel.Request request)
         {
-
             if (!request.Name.IsNameValid())
                 throw new ValidationException()
                     .WithDetail(nameof(request.Name), "El nombre es inválido. El campo debe tener entre 3 y 100 caracteres.");
