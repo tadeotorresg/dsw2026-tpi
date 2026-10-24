@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 
 namespace Dsw2026Tpi.Data;
 
-public class PersistenceEf: IPersistence
+public class PersistenceEf : IPersistence
 {
     private readonly Dsw2026TpiDbContext _context;
 
@@ -61,51 +61,24 @@ public class PersistenceEf: IPersistence
 
     public async Task<Pagination<T>> Paginate<T, TKey>(int pageSize, int pageIndex, Expression<Func<T, bool>> predicate, Expression<Func<T, TKey>> sortOrder, params string[] includes) where T : EntityBase
     {
-        pageSize = Math.Abs(pageSize);
-        
-        var requestedPage = Math.Abs(pageIndex) == 0 ? 1 : Math.Abs(pageIndex);
-        var currentIndex = requestedPage - 1;
-
         var filtered = Include(_context.Set<T>(), includes)
-            .Where(predicate)
-            .OrderBy(sortOrder);
+        .Where(predicate)
+        .OrderBy(sortOrder)
+        .ThenBy(entity => entity.Id);
 
         var total = await filtered.CountAsync();
-        
-        async Task<Pagination<T>> GetPage(int index)
-        {
-            var data = await filtered.Skip(index * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
 
-            return new Pagination<T>(pageSize, index + 1, data, total);
-        }
-        
-        //la pagina existe
-        if (total > pageSize * currentIndex)
-        {
-            return await GetPage(currentIndex);
-        }
+        var offset = ((long)pageIndex - 1) * pageSize;
 
-        //solo hay una pagina
-        if (total < pageSize)
-        {
-            return new Pagination<T>(pageSize, 1, await filtered.ToListAsync(), total);
-        }
+        if (offset >= total)
+            return new Pagination<T>(pageSize, pageIndex, [], total);
 
-        var targetPageIndex = currentIndex - 1;
+        var data = await filtered
+            .Skip((int)offset)
+            .Take(pageSize)
+            .ToListAsync();
 
-        while (true)
-        {
-            if (total > targetPageIndex * pageSize)
-            {
-                return await GetPage(targetPageIndex);
-            }
-
-            targetPageIndex--;
-
-            if (targetPageIndex < 0) return new Pagination<T>(pageSize, 1, [], 0);
-        }
+        return new Pagination<T>(pageSize, pageIndex, data, total);
     }
 
     private static IQueryable<T> Include<T>(IQueryable<T> query, string[] includes) where T : EntityBase
@@ -119,10 +92,23 @@ public class PersistenceEf: IPersistence
         return includedQuery;
     }
     public async Task<TResult> ExecuteInTransactionAsync<TResult>(
-    Func<Task<TResult>> action)
+    Func<Task<TResult>> action, Guid? doctorId = null)
     {
-        await using var transaction =
-            await _context.Database.BeginTransactionAsync();
+        if (doctorId.HasValue && _context.ChangeTracker.HasChanges())
+            throw new InvalidOperationException("La transacción debe comenzar antes de modificar entidades.");
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        if (doctorId.HasValue)
+        {
+            await _context.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                SELECT [Id]
+                FROM [Doctors] WITH (UPDLOCK, HOLDLOCK)
+                WHERE [Id] = {doctorId.Value}
+                """);
+            _context.ChangeTracker.Clear();
+        }
 
         var result = await action();
 

@@ -27,71 +27,120 @@ namespace Dsw2026Tpi.Application.Services
         {
             ValidateAppointmentRequest(request);
 
-            var patientRequest = request.Patient!;
-            var reason = request.Reason!;
+            AppointmentModel.Response response;
 
-            var doctor = await ValidateDoctor(request.DoctorId);
-            var patient = await ValidatePatient(patientRequest.Dni);
-            var slot = await ValidateSlot(request.AvailabilitySlotId, doctor.Id);
-
-            if (slot.Status != SlotStatus.AVAILABLE)
-            {
-                _logger.LogWarning("Intento de reserva sobre un turno no disponible. Slot: {SlotId}, Paciente: {PatientDni}",
-                    slot.Id, patientRequest.Dni);
-                throw new ConflictException(ErrorCodes.APPOINTMENT_CONFLICT, nameof(ErrorCodes.APPOINTMENT_CONFLICT))
-                   .WithDetail(nameof(request.AvailabilitySlotId), "Turno no disponible.");
-            }
-            var slotDateTime = slot.SlotDate.Date.Add(slot.StartTime);
-
-            if (slotDateTime < DateTime.Now)
-                throw new ValidationException(ErrorCodes.VALIDATION_ERROR, nameof(ErrorCodes.VALIDATION_ERROR))
-                    .WithDetail(nameof(request.AvailabilitySlotId), "No se pueden reservar turnos pasados.");
-
-            slot.Book();
-            slot.UpdatedAt = DateTime.Now;
-
-            var appointment = new Appointment(slot.Id, patient.Id, reason);
-            Appointment createdAppointment; 
             try
             {
-                createdAppointment = await _persistence.Add(appointment);
+                response = await _persistence.ExecuteInTransactionAsync<AppointmentModel.Response>(
+                    async () =>
+                    {
+                        var doctor = await ValidateDoctor(request.DoctorId);
+                        
+                        var patient = await ValidatePatient(request.Patient!.Dni);
+                        
+                        var slot = await ValidateSlot(request.AvailabilitySlotId, doctor.Id);
+
+                        var overlappingSlot = await _persistence.First<AvailabilitySlot>(
+                            other =>
+                                other.Id != slot.Id &&
+                                other.AvailabilityRule!.DoctorId ==
+                                doctor.Id && other.SlotDate == slot.SlotDate &&
+                                other.StartTime < slot.EndTime &&
+                                other.EndTime > slot.StartTime &&
+                                (other.Status == SlotStatus.BOOKED || other.Status == SlotStatus.BLOCKED));
+                        
+                        if (slot.Status != SlotStatus.AVAILABLE || overlappingSlot is not null)
+                        { 
+                            throw new ConflictException( ErrorCodes.APPOINTMENT_CONFLICT,
+                                nameof(ErrorCodes.APPOINTMENT_CONFLICT))
+                                    .WithDetail(nameof(request.AvailabilitySlotId), "Turno no disponible.");
+                        }
+                        
+                        var slotDateTime = slot.SlotDate.Date.Add(slot.StartTime);
+                        
+                        if (slotDateTime < DateTime.Now)
+                            throw new ValidationException()
+                            .WithDetail( nameof(request.AvailabilitySlotId), "No se pueden reservar turnos pasados.");
+
+                        slot.Book();
+                        slot.UpdatedAt = DateTime.Now;
+
+                        var appointment = new Appointment(slot.Id, patient.Id, request.Reason!);
+
+                        var createdAppointment = await _persistence.Add(appointment);
+                        
+                        return MapAppointmentResponse(createdAppointment, doctor, slot);
+                        },
+
+                request.DoctorId);
             }
+
             catch (DbUpdateException ex)
                 when (ex.InnerException is SqlException sqlException &&
                       (sqlException.Number == 2601 ||
                        sqlException.Number == 2627))
             {
-                throw new ConflictException(ErrorCodes.APPOINTMENT_CONFLICT,nameof(ErrorCodes.APPOINTMENT_CONFLICT))
-                    .WithDetail(nameof(request.AvailabilitySlotId),"Turno no disponible.");
+                throw new ConflictException(
+                    ErrorCodes.APPOINTMENT_CONFLICT,
+                    nameof(ErrorCodes.APPOINTMENT_CONFLICT))
+                    .WithDetail(
+                        nameof(request.AvailabilitySlotId),
+                        "Turno no disponible.");
             }
 
-            _logger.LogInformation("Turno reservado. Cita: {AppointmentId}, Paciente: {PatientDni}, Médico: {DoctorId}, Fecha: {SlotDate} {StartTime}",
-                appointment.Id, patient.Dni, doctor.Id, slot.SlotDate.ToString("yyyy-MM-dd"), slot.StartTime);
+            _logger.LogInformation(
+                "Turno reservado. Cita: {AppointmentId}, Médico: {DoctorId}",
+                response.Id,
+                request.DoctorId);
 
-            return MapAppointmentResponse(createdAppointment, doctor, slot);
+            return response;
         }
 
         public async Task CancelAppointment(Guid id, string dniDelToken)
         {
-            var appointment = await _persistence.GetById<Appointment>(id,  nameof(Appointment.AvailabilitySlot), nameof(Appointment.Patient))
+            var reference = await _persistence.GetById<Appointment>(id, "AvailabilitySlot.AvailabilityRule",
+                nameof(Appointment.Patient))
                 ?? throw new EntityNotFoundException(nameof(Appointment));
 
-            if (appointment.Patient!.Dni != dniDelToken)
+            if (reference.Patient!.Dni != dniDelToken)
                 throw new AuthorizationException();
 
-            if (appointment.Status != AppointmentStatus.BOOKED)
-                throw new ConflictException(ErrorCodes.INVALID_STATUS, nameof(ErrorCodes.INVALID_STATUS))
-                    .WithDetail(nameof(appointment.Status),"El turno no está reservado.");
+            var doctorId =
+                reference.AvailabilitySlot!.AvailabilityRule!.DoctorId;
 
-            appointment.Cancel();
+            var releasedSlotId = await _persistence
+                .ExecuteInTransactionAsync<Guid>(
+                    async () =>
+                    {
+                        var appointment =
+                            await _persistence.GetById<Appointment>(id,
+                                nameof(Appointment.AvailabilitySlot),
+                                nameof(Appointment.Patient))
+                            ?? throw new EntityNotFoundException(
+                                nameof(Appointment));
 
-            var slot = appointment.AvailabilitySlot!;
-            slot.Free();
-            slot.UpdatedAt = DateTime.Now;
+                        if (appointment.Patient!.Dni != dniDelToken)
+                            throw new AuthorizationException();
 
-            await _persistence.Update(appointment);
-            _logger.LogInformation("Turno cancelado. Cita: {AppointmentId}, Slot liberado: {SlotId}",
-                 appointment.Id, slot.Id);
+                        if (appointment.Status != AppointmentStatus.BOOKED)
+                            throw new ConflictException(ErrorCodes.INVALID_STATUS,
+                                nameof(ErrorCodes.INVALID_STATUS))
+                                .WithDetail(nameof(appointment.Status), "El turno no está reservado.");
+
+                        appointment.Cancel();
+
+                        var slot = appointment.AvailabilitySlot!;
+
+                        slot.Free();
+                        slot.UpdatedAt = DateTime.Now;
+
+                        await _persistence.Update(appointment);
+
+                        return slot.Id;
+                    },
+                    doctorId);
+
+            _logger.LogInformation("Turno cancelado. Cita: {AppointmentId}, Slot liberado: {SlotId}", id, releasedSlotId);
         }
 
         public async Task<IEnumerable<SearchModel.Response>> GetDailyAppointments(DateOnly? date)
@@ -189,9 +238,9 @@ namespace Dsw2026Tpi.Application.Services
                 throw new ValidationException()
                     .WithDetail(nameof(request.Patient.Dni),"Debe indicar un DNI válido de entre 7 y 8 dígitos.");
 
-            if (string.IsNullOrWhiteSpace(request.Reason) || request.Reason.Length < 5)
+            if (string.IsNullOrWhiteSpace(request.Reason) || request.Reason.Length < 5 || request.Reason.Length > 300)
                 throw new ValidationException()
-                    .WithDetail(nameof(request.Reason),"El motivo debe tener al menos 5 caracteres.");
+                    .WithDetail(nameof(request.Reason), "El motivo debe tener entre 5 y 300 caracteres.");
         }
 
         private async Task<Doctor> ValidateDoctor(Guid doctorId)
@@ -223,12 +272,19 @@ namespace Dsw2026Tpi.Application.Services
             if (slot.AvailabilityRule!.DoctorId != doctorId)
                 throw new ValidationException()
                     .WithDetail(nameof(availabilitySlotId),"El turno no pertenece al doctor indicado.");
+            if (slot.AvailabilityRule!.Deleted)
+                throw new ConflictException(ErrorCodes.APPOINTMENT_CONFLICT,
+                    nameof(ErrorCodes.APPOINTMENT_CONFLICT))
+                    .WithDetail(nameof(availabilitySlotId),"El turno ya no pertenece a la agenda vigente.");
 
             return slot;
         }
 
         private void ValidateSearchRequest(SearchModel.Request request)
         {
+            ValidationsExtensions.ValidatePagination(request.PageSize, request.PageIndex);
+
+
             if (request.SpecialtyId.HasValue && request.SpecialtyId.Value == Guid.Empty)
                 throw new ValidationException()
                     .WithDetail(nameof(request.SpecialtyId),"Debe indicar un identificador de especialidad válido.");
@@ -240,6 +296,9 @@ namespace Dsw2026Tpi.Application.Services
             if (request.PatientName is not null && request.PatientName.Length > 150)
                 throw new ValidationException()
                     .WithDetail(nameof(request.PatientName), "El filtro por nombre no puede superar los 150 caracteres.");
+            if (request.Dni.HasValue && !request.Dni.Value.IsDniValid())
+                 throw new ValidationException()
+                    .WithDetail(nameof(request.Dni), "Debe indicar un DNI válido de entre 7 y 8 dígitos.");
         }
 
         private static AppointmentModel.Response MapAppointmentResponse(Appointment appointment, Doctor? doctor, AvailabilitySlot slot)

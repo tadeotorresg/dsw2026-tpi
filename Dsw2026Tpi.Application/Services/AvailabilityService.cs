@@ -22,64 +22,19 @@ namespace Dsw2026Tpi.Application.Services
             _logger = logger;
         }
 
-        public async Task <IEnumerable<AvailabilityModel.Response>> CreateAvailability (AvailabilityModel.Request request)
+        public Task <IEnumerable<AvailabilityModel.Response>> CreateAvailability (AvailabilityModel.Request request)
         {
-            await ValidateDoctor(request.DoctorId);
-
-            var today = DateTime.Today;
-            short year = (short)today.Year;
-            byte month = (byte)today.Month;
-
-            var holidays = _holidayProvider.GetHolidays(year, month);
-
-            ValidateDays(request.Days);
-
-            var existingRules = await _persistence.GetFiltered<AvailabilityRule>
-                (r => r.DoctorId == request.DoctorId && r.Month == month && r.Year == year && r.Deleted == false);
-           
-            if (existingRules != null)
-                CheckOverlaps(request.Days, existingRules);
-
-            var responses = new List<AvailabilityModel.Response>();
-
-            foreach (var dayReq in request.Days)
-            {
-                var dayOfWeek = DayOfWeekConverter.Parse(dayReq.Day);
-                var rule = new AvailabilityRule(request.DoctorId, month, year, (byte)dayOfWeek, dayReq.StartTime, dayReq.EndTime);
-                rule.GenerateSlotsForRestOfMonth(today, holidays);
-
-                if (rule.Slots.Any())
-                {
-                    var createdRule = await _persistence.Add(rule);
-
-                    responses.Add(MapResponse(createdRule));
-                }     
-            }
-
-            _logger.LogInformation("Disponibilidad configurada para el médico {DoctorId}. Período: {Month}/{Year}, Días: {Days}",
-               request.DoctorId, month, year, request.Days.Count);
-
-            return responses;
+            return SaveAvailability(request, replace: false);
         }
 
-        public async Task <IEnumerable<AvailabilityModel.Response>> UpdateAvailability(AvailabilityModel.Request request)
+        public Task <IEnumerable<AvailabilityModel.Response>> UpdateAvailability(AvailabilityModel.Request request)
         {
-            await ValidateDoctor(request.DoctorId);
+            return SaveAvailability(request, replace: true);
+        }
 
-            var today = DateTime.Today;
-            var now = DateTime.Now;
-            short year = (short)today.Year;
-            byte month = (byte)today.Month;
-
-            var holidays = _holidayProvider.GetHolidays(year, month);
-
+        private async Task<IEnumerable<AvailabilityModel.Response>> SaveAvailability(AvailabilityModel.Request request, bool replace)
+        {
             ValidateDays(request.Days);
-
-            var existingRules = await _persistence.GetFiltered<AvailabilityRule>
-                (r => r.DoctorId == request.DoctorId && r.Month == month && r.Year == year && !r.Deleted, nameof(AvailabilityRule.Slots)) ?? [];
-
-            if (!existingRules.Any())
-                throw new EntityNotFoundException(nameof(AvailabilityRule));
 
             var requestedRules = request.Days
                 .Select(day => new
@@ -90,70 +45,90 @@ namespace Dsw2026Tpi.Application.Services
                 })
                 .ToList();
 
-            foreach (var rule in existingRules)
-            {
-                var isStillRequested = requestedRules.Any(requested =>
-                requested.DayOfWeek == rule.DayOfWeek &&
-                requested.StartTime == rule.StartTime &&
-                requested.EndTime == rule.EndTime);
-
-                if (isStillRequested)
-                    continue;
-
-                foreach (var slot in rule.Slots)
-                {
-                    var slotDateTime = slot.SlotDate.Date.Add(slot.StartTime);
-                    var canBeDeleted = slot.Status == SlotStatus.AVAILABLE && slotDateTime > now;
-                    
-                    if (canBeDeleted)
+            var responses = await _persistence.ExecuteInTransactionAsync<IEnumerable<AvailabilityModel.Response>>(
+                async () =>
                     {
-                        slot.SetDeleted();
-                        await _persistence.Update(slot);
-                    }
-                }
+                        await ValidateDoctor(request.DoctorId);
 
-                if (rule.Slots.All(slot => slot.Deleted))
-                {
-                    rule.SetDeleted();
-                    await _persistence.Update(rule);
-                }
-            }
+                        var today = DateTime.Today;
+                        short year = (short)today.Year;
+                        byte month = (byte)today.Month;
 
-            var responses = new List<AvailabilityModel.Response>();
-            foreach (var dayRequest in request.Days)
-            {
-                var dayOfWeek = (byte)DayOfWeekConverter.Parse(dayRequest.Day);
-                var existingRule = existingRules.FirstOrDefault(r =>
-                !r.Deleted &&
-                r.DayOfWeek == dayOfWeek &&
-                r.StartTime == dayRequest.StartTime &&
-                r.EndTime == dayRequest.EndTime);
+                        var holidays = _holidayProvider.GetHolidays(year, month);
 
-                if (existingRule is not null)
-                {
-                    responses.Add(MapResponse(existingRule));
-                    continue;
-                }
+                        var existingRules =
+                            (await _persistence.GetFiltered<AvailabilityRule>(
+                                rule =>
+                                    rule.DoctorId == request.DoctorId &&
+                                    rule.Year == year &&
+                                    rule.Month == month &&
+                                    !rule.Deleted) ?? [])
+                            .ToList();
 
-                var newRule = new AvailabilityRule(
-                    request.DoctorId,
-                    month,
-                    year,
-                    dayOfWeek,
-                    dayRequest.StartTime,
-                    dayRequest.EndTime);
+                        if (replace && existingRules.Count == 0)
+                            throw new EntityNotFoundException(
+                                nameof(AvailabilityRule));
 
-                newRule.GenerateSlotsForRestOfMonth(today, holidays);
+                        if (!replace)
+                            CheckOverlaps(request.Days, existingRules);
 
-                if (newRule.Slots.Any())
-                {
-                    var createdRule = await _persistence.Add(newRule);
+                        if (replace)
+                        {
+                            foreach (var rule in existingRules)
+                            {
+                                var remainsRequested = requestedRules.Any(
+                                    requested =>
+                                        requested.DayOfWeek == rule.DayOfWeek &&
+                                        requested.StartTime == rule.StartTime &&
+                                        requested.EndTime == rule.EndTime);
 
-                    responses.Add(MapResponse(createdRule));
-                } 
-            }
-            _logger.LogInformation("Disponibilidad actualizada para el médico {DoctorId}. Período: {Month}/{Year}, Días: {Days}",
-                request.DoctorId, month, year, request.Days.Count);
+                                if (remainsRequested)continue;
+
+                                rule.SetDeleted();
+
+                                await _persistence.Update(rule);
+                            }
+                        }
+
+                        var responseRules = new List<AvailabilityRule>();
+
+                        foreach (var requested in requestedRules)
+                        {
+                            var rule = existingRules.FirstOrDefault(
+                                existing =>
+                                    !existing.Deleted &&
+                                    existing.DayOfWeek == requested.DayOfWeek &&
+                                    existing.StartTime == requested.StartTime &&
+                                    existing.EndTime == requested.EndTime);
+
+                            if (rule is null)
+                            {
+                                rule = new AvailabilityRule(
+                                    request.DoctorId,
+                                    month,
+                                    year,
+                                    requested.DayOfWeek,
+                                    requested.StartTime,
+                                    requested.EndTime);
+
+                                rule.GenerateSlotsForRestOfMonth(today, holidays);
+
+                                await _persistence.Add(rule);
+
+                                existingRules.Add(rule);
+                            }
+
+                            responseRules.Add(rule);
+                        }
+
+                        return responseRules
+                            .Select(MapResponse)
+                            .ToList();
+                    },
+                    request.DoctorId);
+
+            _logger.LogInformation("Disponibilidad guardada para el médico {DoctorId}. Días: {Days}", request.DoctorId, request.Days.Count);
+
             return responses;
         }
 
@@ -220,7 +195,7 @@ namespace Dsw2026Tpi.Application.Services
         private static AvailabilityModel.Response MapResponse(AvailabilityRule rule)
         {
             return new AvailabilityModel.Response(
-                rule.DoctorId,
+                rule.Id,
                 DayOfWeekConverter.GetDayName(rule.DayOfWeek),
                 rule.StartTime.ToString(@"hh\:mm"),
                 rule.EndTime.ToString(@"hh\:mm"));

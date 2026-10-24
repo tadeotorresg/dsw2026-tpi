@@ -33,6 +33,8 @@ namespace Dsw2026Tpi.Application.Services
 
         public async Task<Pagination<SpecialtyModel.Response>> GetAllSpecialty(int pageSize, int pageIndex, string? name = null)
         {
+            ValidationsExtensions.ValidatePagination(pageSize, pageIndex);
+
             if (!string.IsNullOrWhiteSpace(name) && !name.IsNameValid())
                 throw new ValidationException()
                     .WithDetail(nameof(name), "El filtro por nombre debe tener entre 3 y 100 caracteres.");

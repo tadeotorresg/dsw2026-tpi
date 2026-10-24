@@ -3,8 +3,9 @@ using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.CrossCutting.Exceptions;
 using Dsw2026Tpi.CrossCutting.Helpers;
 using Dsw2026Tpi.Domain.Entities;
-using Dsw2026Tpi.Domain.Interfaces;
 using Dsw2026Tpi.Domain.Enums;
+using Dsw2026Tpi.Domain.Interfaces;
+using System.Data;
 
 namespace Dsw2026Tpi.Application.Services;
 
@@ -19,6 +20,8 @@ public class DoctorService : IDoctorService
 
     public async Task<Pagination<DoctorModel.Response>> GetAll(int pageSize, int pageIndex, string? name = null, Guid? specialtyId = null)
     {
+        ValidationsExtensions.ValidatePagination(pageSize, pageIndex);
+
         if (!string.IsNullOrWhiteSpace(name) && !name.IsNameValid())
             throw new ValidationException()
                 .WithDetail(nameof(name),"El nombre debe tener entre 3 y 100 caracteres.");
@@ -51,7 +54,8 @@ public class DoctorService : IDoctorService
         var availabilityRules = await _persistence.GetFiltered<AvailabilityRule>(
             a => a.DoctorId == doctorId
             && a.Month == mes
-            && a.Year == año);
+            && a.Year == año
+            && !a.Deleted);
 
         if (availabilityRules == null)
             return [];
@@ -61,10 +65,7 @@ public class DoctorService : IDoctorService
             .Select(MapAvailabilityResponse)
             .ToList();
     }
-    public async Task<IEnumerable<AvailabilitySlotModel.Response>> GetAvailableSlots(
-    Guid doctorId,
-    DateOnly? fromDate = null,
-    DateOnly? toDate = null)
+    public async Task<IEnumerable<AvailabilitySlotModel.Response>> GetAvailableSlots(Guid doctorId, DateOnly? fromDate = null, DateOnly? toDate = null)
     {
         if (doctorId == Guid.Empty)
             throw new ValidationException()
@@ -110,7 +111,21 @@ public class DoctorService : IDoctorService
         if (slots is null)
             return [];
 
+        var occupiedSlots =(await _persistence.GetFiltered<AvailabilitySlot>(
+            slot =>
+                    slot.AvailabilityRule!.DoctorId == doctorId &&
+                    slot.SlotDate >= startDateTime &&
+                    slot.SlotDate <= endDateTime &&
+                    (slot.Status == SlotStatus.BOOKED ||
+                     slot.Status == SlotStatus.BLOCKED),
+                nameof(AvailabilitySlot.AvailabilityRule)) ?? [])
+            .ToList();
+
         return slots
+            .Where(slot => !occupiedSlots.Any(occupied =>
+                occupied.SlotDate == slot.SlotDate &&
+                slot.StartTime < occupied.EndTime &&
+                slot.EndTime > occupied.StartTime))
             .OrderBy(slot => slot.SlotDate)
             .ThenBy(slot => slot.StartTime)
             .Select(MapSlotResponse)
@@ -165,7 +180,7 @@ public class DoctorService : IDoctorService
 
         if (!request.LicenseNumber.IsLicenseNumberValid())
             throw new ValidationException()
-                .WithDetail(nameof(request.LicenseNumber), "La matrícula no puede estar vacía.");
+                .WithDetail(nameof(request.LicenseNumber), "La matrícula no puede estar vacía, ni superar los 50 caracteres.");
         
         return await _persistence.GetById<Specialty>(request.SpecialtyId)
             ?? throw new EntityNotFoundException(nameof(Specialty));
@@ -182,7 +197,7 @@ public class DoctorService : IDoctorService
     private static AvailabilityModel.Response MapAvailabilityResponse(AvailabilityRule rule)
     {
         return new AvailabilityModel.Response(
-            rule.DoctorId,
+            rule.Id,
             DayOfWeekConverter.GetDayName(rule.DayOfWeek),
             rule.StartTime.ToString(@"hh\:mm"),
             rule.EndTime.ToString(@"hh\:mm"));

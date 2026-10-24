@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using Dsw2026Tpi.CrossCutting.Exceptions;
 
 namespace Dsw2026Tpi.CrossCutting.Helpers;
 
@@ -31,7 +32,7 @@ public static class ValidationsExtensions
     {
         if (value is null)
         return true;
-        return !string.IsNullOrWhiteSpace(value);
+        return !string.IsNullOrWhiteSpace(value) & value.Length <= 50;
     }
 
     public static bool IsDniValid (this long dni)
@@ -43,5 +44,16 @@ public static class ValidationsExtensions
     public static bool IsPasswordValid(this string? password)
     {
         return !string.IsNullOrWhiteSpace(password) && password.Length >= 8;
+    }
+
+    public static void ValidatePagination(int pageSize, int pageIndex)
+    {
+        if (pageSize < 1 || pageSize > 100)
+            throw new ValidationException()
+                .WithDetail(nameof(pageSize), "La cantidad de elementos por página debe estar entre 1 y 100.");
+
+        if (pageIndex < 1)
+            throw new ValidationException()
+                .WithDetail(nameof(pageIndex), "El número de página debe ser mayor o igual a 1.");
     }
 }

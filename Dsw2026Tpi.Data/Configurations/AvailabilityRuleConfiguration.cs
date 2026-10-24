@@ -38,6 +38,5 @@ public class AvailabilityRuleConfiguration : IEntityTypeConfiguration<Availabili
 
         builder.Property(r => r.Deleted)
             .HasDefaultValue(false);
-        builder.HasQueryFilter(r => !r.Deleted);
     }
 }
