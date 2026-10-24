@@ -4,6 +4,7 @@ using Dsw2026Tpi.CrossCutting.Exceptions;
 using Dsw2026Tpi.CrossCutting.Helpers;
 using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
+using Dsw2026Tpi.Domain.Enums;
 
 namespace Dsw2026Tpi.Application.Services;
 
@@ -16,14 +17,21 @@ public class DoctorService : IDoctorService
         _persistence = persistence;
     }
 
-    public async Task<Pagination<DoctorModel.Response>> GetAll(int pageSize, int pageIndex, string? name = null)
+    public async Task<Pagination<DoctorModel.Response>> GetAll(int pageSize, int pageIndex, string? name = null, Guid? specialtyId = null)
     {
         if (!string.IsNullOrWhiteSpace(name) && !name.IsNameValid())
             throw new ValidationException()
                 .WithDetail(nameof(name),"El nombre debe tener entre 3 y 100 caracteres.");
 
+        if (specialtyId.HasValue && specialtyId.Value == Guid.Empty)
+            throw new ValidationException()
+                .WithDetail(
+                    nameof(specialtyId),
+                    "Debe indicar un identificador de especialidad válido.");
+
         var doctors = await _persistence.Paginate<Doctor, string>(pageSize, pageIndex, 
-            d => d.IsActive && (string.IsNullOrWhiteSpace(name) ||d.Name.Contains(name)), 
+            d => d.IsActive && (string.IsNullOrWhiteSpace(name) ||d.Name.Contains(name)) &&
+             (!specialtyId.HasValue || d.SpecialtyId == specialtyId.Value),
             d => d.Name, nameof(Doctor.Specialty));
 
         return doctors.Map(MapResponse);
@@ -51,6 +59,61 @@ public class DoctorService : IDoctorService
         return availabilityRules
             .OrderBy(rule => rule.DayOfWeek == 0 ? 7 : rule.DayOfWeek)
             .Select(MapAvailabilityResponse)
+            .ToList();
+    }
+    public async Task<IEnumerable<AvailabilitySlotModel.Response>> GetAvailableSlots(
+    Guid doctorId,
+    DateOnly? fromDate = null,
+    DateOnly? toDate = null)
+    {
+        if (doctorId == Guid.Empty)
+            throw new ValidationException()
+                .WithDetail(nameof(doctorId), "Debe indicar un DoctorId válido.");
+
+        var doctor = await GetDoctor(doctorId);
+
+        var now = DateTime.Now;
+        var today = now.Date;
+        var currentTime = now.TimeOfDay;
+
+        var startDate = fromDate ?? DateOnly.FromDateTime(today);
+
+        var endDate = toDate ?? new DateOnly(
+            startDate.Year,
+            startDate.Month,
+            DateTime.DaysInMonth(startDate.Year, startDate.Month));
+
+        if (startDate > endDate)
+            throw new ValidationException()
+                .WithDetail(
+                    nameof(toDate),
+                    "La fecha final debe ser mayor o igual que la fecha inicial.");
+
+        if (!doctor.IsActive)
+            return [];
+
+        var startDateTime = startDate.ToDateTime(TimeOnly.MinValue);
+        var endDateTime = endDate.ToDateTime(TimeOnly.MinValue);
+
+        var slots = await _persistence.GetFiltered<AvailabilitySlot>(
+            slot =>
+                slot.AvailabilityRule!.DoctorId == doctorId &&
+                !slot.AvailabilityRule.Deleted &&
+                slot.Status == SlotStatus.AVAILABLE &&
+                slot.SlotDate >= startDateTime &&
+                slot.SlotDate <= endDateTime &&
+                (slot.SlotDate > today ||
+                    (slot.SlotDate == today &&
+                     slot.StartTime >= currentTime)),
+            nameof(AvailabilitySlot.AvailabilityRule));
+
+        if (slots is null)
+            return [];
+
+        return slots
+            .OrderBy(slot => slot.SlotDate)
+            .ThenBy(slot => slot.StartTime)
+            .Select(MapSlotResponse)
             .ToList();
     }
 
@@ -123,6 +186,15 @@ public class DoctorService : IDoctorService
             DayOfWeekConverter.GetDayName(rule.DayOfWeek),
             rule.StartTime.ToString(@"hh\:mm"),
             rule.EndTime.ToString(@"hh\:mm"));
+    }
+    private static AvailabilitySlotModel.Response MapSlotResponse(
+    AvailabilitySlot slot)
+    {
+        return new AvailabilitySlotModel.Response(
+            slot.Id,
+            DateOnly.FromDateTime(slot.SlotDate),
+            slot.StartTime.ToString(@"hh\:mm"),
+            slot.EndTime.ToString(@"hh\:mm"));
     }
     #endregion
 }

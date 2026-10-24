@@ -4,7 +4,7 @@ public class Patient : SoftDeletableEntity
 {
     public Guid UserId { get; private set; }
     public string Dni {  get; init; }
-    public string? FullName { get; init; }
+    public string? FullName { get; private set; }
 
 
     #region Constructor for EF
@@ -17,6 +17,10 @@ public class Patient : SoftDeletableEntity
     {
         UserId = userId;
         Dni = dni;
+        FullName = fullName;
+    }
+    public void UpdateProfile (string fullName)
+    {
         FullName = fullName;
     }
 }

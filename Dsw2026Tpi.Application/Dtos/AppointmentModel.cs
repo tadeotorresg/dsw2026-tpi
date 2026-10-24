@@ -4,5 +4,8 @@ public class AppointmentModel
 {
     public record Request(Guid DoctorId, Guid AvailabilitySlotId, PatientRequest? Patient, string? Reason);
     public record PatientRequest(long Dni);
-    public record Response(Guid Id, Guid DoctorId, Guid AvailabilitySlotId, Guid PatientId, DateOnly Date, string StartTime, string EndTime, string Reason, string Status);
+    public record Response(Guid Id,Guid AvailabilitySlotId,Guid PatientId,DateOnly Date,string StartTime,
+        string EndTime,string Reason,string Status,DoctorDto? Doctor);
+    public record DoctorDto(Guid Id,string Name,SpecialtyDto? Specialty);
+    public record SpecialtyDto(string Name);
 }

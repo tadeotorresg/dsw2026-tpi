@@ -48,14 +48,13 @@ namespace Dsw2026Tpi.Application.Services
                     .WithDetail(nameof(request.AvailabilitySlotId), "No se pueden reservar turnos pasados.");
 
             slot.Book();
-            await _persistence.Update(slot);
+            slot.UpdatedAt = DateTime.Now;
 
             var appointment = new Appointment(slot.Id, patient.Id, reason);
             Appointment createdAppointment; 
             try
             {
-                createdAppointment =
-                    await _persistence.Add(appointment);
+                createdAppointment = await _persistence.Add(appointment);
             }
             catch (DbUpdateException ex)
                 when (ex.InnerException is SqlException sqlException &&
@@ -69,10 +68,7 @@ namespace Dsw2026Tpi.Application.Services
             _logger.LogInformation("Turno reservado. Cita: {AppointmentId}, Paciente: {PatientDni}, Médico: {DoctorId}, Fecha: {SlotDate} {StartTime}",
                 appointment.Id, patient.Dni, doctor.Id, slot.SlotDate.ToString("yyyy-MM-dd"), slot.StartTime);
 
-            return MapAppointmentResponse(
-                createdAppointment,
-                doctor.Id,
-                slot);
+            return MapAppointmentResponse(createdAppointment, doctor, slot);
         }
 
         public async Task CancelAppointment(Guid id, string dniDelToken)
@@ -137,7 +133,7 @@ namespace Dsw2026Tpi.Application.Services
             var currentTime = now.TimeOfDay;
 
             var appointments = await _persistence.GetFiltered<Appointment>(a => a.Patient!.Dni == dniString && a.Status == AppointmentStatus.BOOKED 
-                && (a.AvailabilitySlot!.SlotDate > today || (a.AvailabilitySlot.SlotDate == today && a.AvailabilitySlot.StartTime >= currentTime)), "AvailabilitySlot.AvailabilityRule");
+                && (a.AvailabilitySlot!.SlotDate > today || (a.AvailabilitySlot.SlotDate == today && a.AvailabilitySlot.StartTime >= currentTime)), "AvailabilitySlot.AvailabilityRule.Doctor.Specialty");
             
             if (appointments is null)
                 return [];
@@ -147,13 +143,17 @@ namespace Dsw2026Tpi.Application.Services
                 .ThenBy(appointment => appointment.AvailabilitySlot!.StartTime)
                 .Select(appointment => MapAppointmentResponse( 
                     appointment, 
-                    appointment.AvailabilitySlot!.AvailabilityRule!.DoctorId, 
-                    appointment.AvailabilitySlot))
+                    appointment.AvailabilitySlot!.AvailabilityRule!.Doctor, 
+                    appointment.AvailabilitySlot!))
                 .ToList();
         }
 
         public async Task<Pagination<SearchModel.Response>> SearchAppointments(SearchModel.Request request)
         {
+            request = request with
+            {
+                PatientName = request.PatientName?.Trim()
+            };
             ValidateSearchRequest(request);
 
             var appointments = await _persistence.Paginate<Appointment, DateTime>(
@@ -163,7 +163,10 @@ namespace Dsw2026Tpi.Application.Services
                     (!request.SpecialtyId.HasValue || a.AvailabilitySlot!.AvailabilityRule!.Doctor!.SpecialtyId == request.SpecialtyId.Value) &&
                     (!request.DoctorId.HasValue || a.AvailabilitySlot!.AvailabilityRule!.DoctorId == request.DoctorId.Value) &&
                     (!request.Dni.HasValue || a.Patient!.Dni == request.Dni.Value.ToString()) &&
-
+                    
+                    (string.IsNullOrWhiteSpace(request.PatientName) ||
+                    (a.Patient!.FullName != null && a.Patient.FullName.Contains(request.PatientName))) &&
+                    
                     (!request.Date.HasValue ||
                         (a.AvailabilitySlot!.SlotDate.Year == request.Date.Value.Year &&
                          a.AvailabilitySlot.SlotDate.Month == request.Date.Value.Month &&
@@ -233,24 +236,32 @@ namespace Dsw2026Tpi.Application.Services
             if (request.DoctorId.HasValue && request.DoctorId.Value == Guid.Empty)
                 throw new ValidationException()
                     .WithDetail(nameof(request.DoctorId),"Debe indicar un identificador de médico válido.");
+
+            if (request.PatientName is not null && request.PatientName.Length > 150)
+                throw new ValidationException()
+                    .WithDetail(nameof(request.PatientName), "El filtro por nombre no puede superar los 150 caracteres.");
         }
 
-        private static AppointmentModel.Response MapAppointmentResponse(Appointment appointment, Guid doctorId, AvailabilitySlot slot)
+        private static AppointmentModel.Response MapAppointmentResponse(Appointment appointment, Doctor? doctor, AvailabilitySlot slot)
         {
+            var specialty = doctor?.Specialty;
+
             return new AppointmentModel.Response(
                 appointment.Id,
-                doctorId,
                 slot.Id,
                 appointment.PatientId,
                 DateOnly.FromDateTime(slot.SlotDate),
                 slot.StartTime.ToString(@"hh\:mm"),
                 slot.EndTime.ToString(@"hh\:mm"),
                 appointment.Reason,
-                appointment.Status.ToString());
+                appointment.Status.ToString(),
+                doctor is null? null: new AppointmentModel.DoctorDto(doctor.Id,doctor.Name,
+                specialty is null? null: new AppointmentModel.SpecialtyDto(specialty.Name)));
         }
 
         private static SearchModel.Response MapSearchResponse(Appointment appointment)
         {
+            var slot = appointment.AvailabilitySlot!;
             var doctor = appointment.AvailabilitySlot!.AvailabilityRule!.Doctor;
             var specialty = doctor?.Specialty;
             var patient = appointment.Patient;
@@ -260,7 +271,10 @@ namespace Dsw2026Tpi.Application.Services
                 appointment.Status.ToString(),
                 patient is null ? null: new SearchModel.PatientDto(long.Parse(patient.Dni), patient.FullName ?? string.Empty),
                 doctor is null? null: new SearchModel.DoctorDto(doctor.Id,doctor.Name,
-                specialty is null? null: new SearchModel.SpecialtyDto(specialty.Id, specialty.Name)));
+                specialty is null? null: new SearchModel.SpecialtyDto(specialty.Id, specialty.Name)),
+            DateOnly.FromDateTime(slot.SlotDate),
+            slot.StartTime.ToString(@"hh\:mm"),
+            slot.EndTime.ToString(@"hh\:mm"));
         }
         #endregion
     }

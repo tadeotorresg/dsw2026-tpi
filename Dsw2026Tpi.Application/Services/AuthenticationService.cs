@@ -9,6 +9,7 @@ using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace Dsw2026Tpi.Application.Services;
 
@@ -20,13 +21,14 @@ public class AuthenticationService : IAuthenticationService
     private readonly JwtService _jwtService;
     private readonly ILogger<AuthenticationService> _logger;
     private readonly IPersistence _persistence;
-
+    private readonly AuthenticationDbContext _authenticationDbContext;
     public AuthenticationService(UserManager<ApplicationUser> userManager,
         ISignInService signInManager,
         RoleManager<IdentityRole> roleManager,
         JwtService jwtService,
         ILogger<AuthenticationService> logger,
-        IPersistence persistence)
+        IPersistence persistence,
+        AuthenticationDbContext authenticationDbContext)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -34,41 +36,54 @@ public class AuthenticationService : IAuthenticationService
         _jwtService = jwtService;
         _logger = logger;
         _persistence = persistence;
+        _authenticationDbContext = authenticationDbContext;
     }
 
-    public async Task<LoginAdminModel.Response> LoginAdmin(LoginAdminModel.Request request)
+    public async Task<LoginAdminModel.Response> LoginAdmin(
+    LoginAdminModel.Request request)
     {
-        if (!request.Email.IsEmailValid()) 
+        if (!request.Email.IsEmailValid())
             throw new ValidationException()
-                .WithDetail(nameof(request.Email), "Debe indicar un email válido");
+                .WithDetail(nameof(request.Email), "Debe indicar un email válido.");
 
-
-        if (!request.Password.IsPasswordValid()) 
+        if (!request.Password.IsPasswordValid())
             throw new ValidationException()
                 .WithDetail(nameof(request.Password), "La contraseña debe tener al menos 8 caracteres.");
 
+        var user = await _userManager.FindByEmailAsync(request.Email);
 
-        var user = await _userManager.FindByEmailAsync(request.Email) ?? throw new AuthenticationException();
-        var result = await _signInManager.CheckPassword(user, request.Password);
+        if (user is null || user.Deleted)
+            throw new AuthenticationException();
 
-        if (!result)
+        var validPassword = await _signInManager.CheckPassword(
+            user,
+            request.Password);
+
+        if (!validPassword)
         {
-            _logger.LogError("Intento de login fallido para: {Email}", request.Email);
+            _logger.LogWarning( "Intento de login administrativo fallido para: {Email}", request.Email);
+
             throw new AuthenticationException();
         }
 
-        var role = (await _userManager.GetRolesAsync(user)).FirstOrDefault();
+        var isAdministrator = await _userManager.IsInRoleAsync(
+            user,
+            Roles.Administrator);
 
-        if (role != Roles.Administrator)
+        if (!isAdministrator)
             throw new AuthenticationException();
 
-        var token = _jwtService.GenerateToken(user.UserName!, role);
+        var token = _jwtService.GenerateToken(
+            user.UserName!,
+            Roles.Administrator);
 
-        _logger.LogInformation("Inicio de sesion de administrador exitoso: {Email}", request.Email);
+        _logger.LogInformation(
+            "Inicio de sesión de administrador exitoso: {Email}",
+            request.Email);
 
         return new LoginAdminModel.Response(
             token,
-            role.ToUpperInvariant());
+            Roles.Administrator.ToUpperInvariant());
     }
 
     public async Task<LoginPatientModel.Response> LoginPatient(LoginPatientModel.Request request)
@@ -117,15 +132,22 @@ public class AuthenticationService : IAuthenticationService
             _logger.LogInformation("Paciente registrado automáticamente. DNI: {Dni}", dniString);
         }
 
-        if (user is null || patient is null)
+        if (user is null || user.Deleted || patient is null)
             throw new AuthenticationException();
-        
-        var authenticatedUserId = Guid.Parse(user.Id);
 
-        if (patient.UserId != authenticatedUserId)
+        if (!Guid.TryParse(user.Id, out var authenticatedUserId)
+            || patient.UserId != authenticatedUserId)
             throw new AuthenticationException();
-        
-        var token = _jwtService.GenerateToken(user.UserName!, Roles.Patient, dniString);
+
+        var isPatient = await _userManager.IsInRoleAsync(user, Roles.Patient);
+
+        if (!isPatient)
+            throw new AuthenticationException();
+
+        var token = _jwtService.GenerateToken(
+            user.UserName!,
+            Roles.Patient,
+            dniString);
 
         _logger.LogInformation("Inicio de sesion de paciente exitoso: {Email}", request.Email);
 
@@ -134,30 +156,64 @@ public class AuthenticationService : IAuthenticationService
             Roles.Patient.ToUpperInvariant());
     }
 
-    public async Task<RegisterModel.Response> Register(RegisterModel.Request request)
+    public async Task<RegisterModel.Response> Register(
+    RegisterModel.Request request)
     {
-        if (!request.Email.IsEmailValid()) 
+        if (!request.Email.IsEmailValid())
             throw new ValidationException()
                 .WithDetail(nameof(request.Email), "Debe indicar un email válido.");
+
+        if (!request.Password.IsPasswordValid())
+            throw new ValidationException()
+                .WithDetail(nameof(request.Password), "La contraseña debe tener al menos 8 caracteres.");
+
+        await using var transaction =
+            await _authenticationDbContext.Database.BeginTransactionAsync();
+
+        var now = DateTime.Now;
 
         var user = new ApplicationUser
         {
             UserName = request.Email,
             Email = request.Email,
-            CreatedAt = DateTime.Now,
-            UpdatedAt = DateTime.Now
+            CreatedAt = now,
+            UpdatedAt = now
         };
 
-        var result = await _userManager.CreateAsync(user, request.Password);
+        var createResult = await _userManager.CreateAsync(
+            user,
+            request.Password);
 
-        if (!result.Succeeded) 
-            throw new ConflictException(ErrorCodes.REGISTER_USER_CONFLICT, nameof(ErrorCodes.REGISTER_USER_CONFLICT))
-                .WithDetail(result.Errors.Select(e => (e.Code, e.Description)));
+        if (!createResult.Succeeded)
+        {
+            throw new ConflictException(
+                ErrorCodes.REGISTER_USER_CONFLICT,
+                nameof(ErrorCodes.REGISTER_USER_CONFLICT))
+                .WithDetail(
+                    createResult.Errors.Select(
+                        error => (error.Code, error.Description)));
+        }
 
-        _ = await _userManager.AddToRoleAsync(user, Roles.Administrator);
+        var roleResult = await _userManager.AddToRoleAsync(
+            user,
+            Roles.Administrator);
 
-        _logger.LogInformation("Usuario registrado: {Email}", request.Email);
+        if (!roleResult.Succeeded)
+        {
+            throw new ConflictException(
+                ErrorCodes.REGISTER_USER_CONFLICT,
+                nameof(ErrorCodes.REGISTER_USER_CONFLICT))
+                .WithDetail(
+                    roleResult.Errors.Select(
+                        error => (error.Code, error.Description)));
+        }
 
-        return new RegisterModel.Response(request.Email);
+        await transaction.CommitAsync();
+
+        _logger.LogInformation(
+            "Administrador registrado: {Email}",
+            user.Email);
+
+        return new RegisterModel.Response(user.Email!);
     }
 }

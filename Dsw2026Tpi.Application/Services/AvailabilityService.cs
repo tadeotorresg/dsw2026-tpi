@@ -177,7 +177,7 @@ namespace Dsw2026Tpi.Application.Services
                         .WithDetail(nameof(day.EndTime), "El intervalo debe ser de al menos 30 minutos.");
             }
 
-            var grouped = days.GroupBy(d => d.Day.ToUpper());
+            var grouped = days.GroupBy(d => DayOfWeekConverter.Parse(d.Day));
 
             foreach (var group in grouped)
             {

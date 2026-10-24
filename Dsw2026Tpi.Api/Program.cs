@@ -36,6 +36,7 @@ public class Program
             builder.Services.AddAppRateLimiting(builder.Configuration);
 
             var app = builder.Build();
+            await app.InitializeIdentityAsync();
 
             app.UseSerilogRequestLogging();
 

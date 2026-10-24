@@ -68,9 +68,10 @@ public class AppointmentController : AppController
         [FromQuery] long? dni,
         [FromQuery] DateOnly? date,
         [FromQuery] int pageSize = 10,
-        [FromQuery] int pageIndex = 1)
+        [FromQuery] int pageIndex = 1,
+        [FromQuery] string? patientName = null)
     {
-        var request =new SearchModel.Request(specialtyId,doctorId, dni, date, pageSize, pageIndex);
+        var request =new SearchModel.Request(specialtyId,doctorId, dni, date, pageSize, pageIndex, patientName);
         var response = await _appointmentService.SearchAppointments(request);
         return Ok(response);
     }

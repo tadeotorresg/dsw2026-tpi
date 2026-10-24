@@ -18,9 +18,9 @@ public class DoctorController : AppController
     [HttpGet]
     [Authorize(Roles = Roles.Administrator + "," + Roles.Patient)]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll([FromQuery]int pageSize = 10, [FromQuery]int pageIndex = 1, [FromQuery]string? name = null)
+    public async Task<IActionResult> GetAll([FromQuery]int pageSize = 10, [FromQuery]int pageIndex = 1, [FromQuery]string? name = null, [FromQuery] Guid? specialtyId = null)
     {
-        var doctors = await _service.GetAll(pageSize, pageIndex, name);
+        var doctors = await _service.GetAll(pageSize, pageIndex, name, specialtyId);
         return Ok(doctors);
     }
 
@@ -32,6 +32,23 @@ public class DoctorController : AppController
         var availabilities =await _service.GetAvailabilities(id);
 
         return Ok(availabilities);
+    }
+    [HttpGet("{id:guid}/slots")]
+    [Authorize(Roles = Roles.Administrator + "," + Roles.Patient)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetAvailableSlots(
+    Guid id,
+    [FromQuery] DateOnly? fromDate = null,
+    [FromQuery] DateOnly? toDate = null)
+    {
+        var slots = await _service.GetAvailableSlots(
+            id,
+            fromDate,
+            toDate);
+
+        return Ok(slots);
     }
 
     [HttpPost]
