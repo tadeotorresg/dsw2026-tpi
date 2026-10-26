@@ -41,7 +41,7 @@ namespace Dsw2026Tpi.Application.Services
                     .WithDetail(nameof(name), "El filtro por nombre debe tener entre 3 y 100 caracteres.");
             
             var specialties = await _persistence.Paginate<Specialty, string>(pageSize, pageIndex,
-                s => s.Deleted && (!onlyActive || s.IsActive) && (string.IsNullOrWhiteSpace(name) || s.Name.Contains(name)),
+                s => !s.Deleted && (!onlyActive || s.IsActive) && (string.IsNullOrWhiteSpace(name) || s.Name.Contains(name)),
                 s => s.Name);
             return specialties.Map(MapResponse);
         }

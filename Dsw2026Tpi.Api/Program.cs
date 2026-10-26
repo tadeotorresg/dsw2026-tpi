@@ -30,7 +30,7 @@ public class Program
                 {
                     options.JsonSerializerOptions.PropertyNamingPolicy =JsonNamingPolicy.CamelCase;
                 });
-
+            builder.Services.AddAppErrorHandling();
             builder.Services.AddHealthChecks();
 
             builder.Services.AddAppRateLimiting(builder.Configuration);
@@ -51,6 +51,7 @@ public class Program
             }
 
             app.UseMiddleware<ExceptionHandlingMiddleware>();
+            app.UseAppErrorHandling();
 
             app.UseCors();
 
