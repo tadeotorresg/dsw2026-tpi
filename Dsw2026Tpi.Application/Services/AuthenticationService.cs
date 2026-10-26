@@ -74,8 +74,9 @@ public class AuthenticationService : IAuthenticationService
 
         if (!isAdministrator)
             throw new AuthenticationException();
+        var securityStamp = await _userManager.GetSecurityStampAsync(user);
 
-        var token = _jwtService.GenerateToken(user.UserName!, Roles.Administrator);
+        var token = _jwtService.GenerateToken(user.UserName!, Roles.Administrator, securityStamp);
 
         _logger.LogInformation("Inicio de sesión de administrador exitoso: {Email}", request.Email);
 
@@ -159,16 +160,32 @@ public class AuthenticationService : IAuthenticationService
         if (!isPatient)
             throw new AuthenticationException();
 
+        var securityStamp = await _userManager.GetSecurityStampAsync(user);
         var token = _jwtService.GenerateToken(
             user.UserName!,
             Roles.Patient,
+            securityStamp,
             dniString);
 
         _logger.LogInformation("Inicio de sesión de paciente exitoso: {Email}", request.Email);
 
         return new LoginPatientModel.Response(token,Roles.Patient.ToUpperInvariant());
     }
-    
+    public async Task Logout(string username)
+    {
+        var user = await _userManager.FindByNameAsync(username);
+
+        if (user is null || user.Deleted)
+            throw new AuthenticationException();
+
+        var result = await _userManager.UpdateSecurityStampAsync(user);
+
+        if (!result.Succeeded)
+            throw new InvalidOperationException("No se pudo cerrar la sesión.");
+
+        _logger.LogInformation("Sesiones cerradas para el usuario {UserId}", user.Id);
+    }
+
     public async Task<RegisterModel.Response> Register(
     RegisterModel.Request request)
     {

@@ -35,7 +35,16 @@ namespace Dsw2026Tpi.Application.Services
                     async () =>
                     {
                         var doctor = await ValidateDoctor(request.DoctorId);
-                        
+                        if (!doctor.IsActive)
+                        {
+                            throw new ConflictException(
+                                ErrorCodes.APPOINTMENT_CONFLICT,
+                                nameof(ErrorCodes.APPOINTMENT_CONFLICT))
+                                .WithDetail(
+                                    nameof(request.DoctorId),
+                                    "El médico está inactivo y no admite nuevas reservas.");
+                        }
+
                         var patient = await ValidatePatient(request.Patient!.Dni);
                         
                         var slot = await ValidateSlot(request.AvailabilitySlotId, doctor.Id);

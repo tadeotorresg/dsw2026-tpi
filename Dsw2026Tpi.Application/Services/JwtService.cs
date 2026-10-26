@@ -15,7 +15,7 @@ public class JwtService
         _config = config;
     }
 
-    public string GenerateToken(string username, string? role, string? dni = null)
+    public string GenerateToken(string username, string? role, string securityStamp, string? dni = null)
     {
         if (_config == null) throw new ArgumentNullException();
         var jwtConfig = _config.GetSection("Jwt");
@@ -30,7 +30,8 @@ public class JwtService
         {
             new (JwtRegisteredClaimNames.Sub, username),
             new (ClaimTypes.Name, username),
-            new (ClaimTypes.Role, role ?? string.Empty)
+            new (ClaimTypes.Role, role ?? string.Empty),
+            new(ClaimsExtensions.SecurityStampClaim, securityStamp)
         };
 
         if (!string.IsNullOrWhiteSpace(dni))

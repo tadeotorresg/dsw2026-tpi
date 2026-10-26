@@ -34,7 +34,7 @@ namespace Dsw2026Tpi.Application.Services
 
         private async Task<IEnumerable<AvailabilityModel.Response>> SaveAvailability(AvailabilityModel.Request request, bool replace)
         {
-            ValidateDays(request.Days);
+            ValidateDays(request.Days, allowEmpty: replace);
 
             var requestedRules = request.Days
                 .Select(day => new
@@ -56,18 +56,18 @@ namespace Dsw2026Tpi.Application.Services
 
                         var holidays = _holidayProvider.GetHolidays(year, month);
 
-                        var existingRules =
-                            (await _persistence.GetFiltered<AvailabilityRule>(
-                                rule =>
-                                    rule.DoctorId == request.DoctorId &&
-                                    rule.Year == year &&
-                                    rule.Month == month &&
-                                    !rule.Deleted) ?? [])
-                            .ToList();
+                        var periodRules = (await _persistence.GetFiltered<AvailabilityRule>( rule =>
+                        rule.DoctorId == request.DoctorId &&
+                        rule.Year == year &&
+                        rule.Month == month) ?? []) .ToList();
 
-                        if (replace && existingRules.Count == 0)
+                        if (replace && periodRules.Count == 0)
                             throw new EntityNotFoundException(
                                 nameof(AvailabilityRule));
+
+                        var existingRules = periodRules
+                            .Where(rule => !rule.Deleted)
+                            .ToList();
 
                         if (!replace)
                             CheckOverlaps(request.Days, existingRules);
@@ -133,15 +133,27 @@ namespace Dsw2026Tpi.Application.Services
         }
 
         #region Private Methods
-        private void ValidateDays(List<AvailabilityModel.DayRequest> days)
+        private void ValidateDays(List<AvailabilityModel.DayRequest> days, bool allowEmpty = false)
         {
-            if (days == null || days.Count == 0) 
+            if (days is null) 
                 throw new ValidationException()
-                    .WithDetail(nameof(days), "Debe enviar al menos un dia.");
+                    .WithDetail(nameof(days), "Debe enviar los días.");
+
+            if (!allowEmpty && days.Count == 0)
+                throw new ValidationException()
+                    .WithDetail(nameof(days), "Debe enviar al menos un día.");
 
             foreach (var day in days)
             {
                 DayOfWeekConverter.Parse(day.Day);
+
+                if (day.StartTime < TimeSpan.Zero || day.StartTime >= TimeSpan.FromDays(1))
+                    throw new ValidationException()
+                        .WithDetail( nameof(day.StartTime), "La hora de inicio debe estar entre las 00:00 y antes de las 24:00.");
+
+                if (day.EndTime <= TimeSpan.Zero || day.EndTime >= TimeSpan.FromDays(1))
+                    throw new ValidationException()
+                        .WithDetail( nameof(day.EndTime), "La hora de fin debe ser mayor que las 00:00 y anterior a las 24:00.");
 
                 if (day.StartTime >= day.EndTime) 
                     throw new ValidationException()

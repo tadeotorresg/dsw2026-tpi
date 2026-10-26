@@ -6,6 +6,7 @@ namespace Dsw2026Tpi.CrossCutting.Helpers
     public static class ClaimsExtensions
     {
         public const string DniClaim = "dni";
+        public const string SecurityStampClaim = "security_stamp";
         public static string GetAuthenticatedDni(this ClaimsPrincipal user, long? requestedDni = null)
         {
             var tokenDni = user.FindFirst(DniClaim)?.Value;

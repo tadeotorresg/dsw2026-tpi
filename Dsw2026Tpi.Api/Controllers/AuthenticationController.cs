@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Dsw2026Tpi.CrossCutting.Identity;
 using Microsoft.AspNetCore.Authorization;
+using Dsw2026Tpi.CrossCutting.Exceptions;
 
 namespace Dsw2026Tpi.Api.Controllers;
 
@@ -46,5 +47,21 @@ public class AuthenticationController : AppController
     {
         var result = await _authenticationService.LoginPatient(request);
         return Ok(result);
+    }
+
+    [HttpPost("logout")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Logout()
+    {
+        var username = User.Identity?.Name;
+
+        if (string.IsNullOrWhiteSpace(username))
+            throw new AuthenticationException();
+
+        await _authenticationService.Logout(username);
+
+        return NoContent();
     }
 }

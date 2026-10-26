@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Dsw2026Tpi.CrossCutting.Helpers;
+using System.Security.Claims;
 
 namespace Dsw2026Tpi.Api.Configurations;
 
@@ -37,6 +39,44 @@ public static class SecurityConfigurationExtensions
                     ValidIssuer = issuer,
                     ValidAudience = audience,
                     IssuerSigningKey = new SymmetricSecurityKey(key)
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        var username = context.Principal?.Identity?.Name;
+
+                        var tokenStamp = context.Principal?.FindFirst(ClaimsExtensions.SecurityStampClaim)?.Value;
+
+                        var role = context.Principal?.FindFirst(ClaimTypes.Role)?.Value;
+
+                        if (string.IsNullOrWhiteSpace(username) ||string.IsNullOrWhiteSpace(tokenStamp) || string.IsNullOrWhiteSpace(role))
+                        {
+                            context.Fail("Sesión inválida.");
+                            return;
+                        }
+
+                        var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+
+                        var user = await userManager.FindByNameAsync(username);
+
+                        if (user is null || user.Deleted)
+                        {
+                            context.Fail("Sesión inválida.");
+                            return;
+                        }
+
+                        var currentStamp = await userManager.GetSecurityStampAsync(user);
+
+                        if (!string.Equals(tokenStamp, currentStamp, StringComparison.Ordinal))
+                        {
+                            context.Fail("Sesión inválida.");
+                            return;
+                        }
+
+                        if (!await userManager.IsInRoleAsync(user, role))
+                            context.Fail("Sesión inválida.");
+                    }
                 };
             });
         services.AddAuthorizationBuilder()
