@@ -51,6 +51,11 @@ public class PersistenceEf : IPersistence
         return await Include(_context.Set<T>(), include).Where(predicate).ToListAsync();
     }
 
+    public async Task<int> Count<T>(Expression<Func<T, bool>> predicate) where T : EntityBase
+    {
+        return await _context.Set<T>().CountAsync(predicate);
+    }
+
     public async Task<T> Update<T>(T entity) where T : EntityBase
     {
         entity.UpdatedAt = DateTime.Now;

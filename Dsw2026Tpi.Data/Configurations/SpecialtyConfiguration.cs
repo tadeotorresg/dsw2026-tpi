@@ -26,6 +26,10 @@ public class SpecialtyConfiguration : IEntityTypeConfiguration<Specialty>
             .IsUnicode(false)
             .HasMaxLength(100);
 
+        builder.Property(s => s.IsActive)
+            .IsRequired()
+            .HasDefaultValue(true);
+
         builder.Property(s => s.Deleted)
             .HasDefaultValue(false);
         builder.HasQueryFilter(s => !s.Deleted);

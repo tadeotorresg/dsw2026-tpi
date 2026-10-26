@@ -32,7 +32,6 @@ public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
 
         builder.Property(d => d.Deleted)
             .HasDefaultValue(false);
-        builder.HasQueryFilter(d => !d.Deleted);
 
         builder.Property(d => d.CreatedAt);
         builder.Property(d => d.UpdatedAt);

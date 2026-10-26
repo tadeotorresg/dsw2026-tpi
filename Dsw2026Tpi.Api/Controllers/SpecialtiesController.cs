@@ -30,7 +30,7 @@ public class SpecialtiesController : AppController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll([FromQuery] int pageSize = 10, [FromQuery] int pageIndex = 1, [FromQuery] string? name = null)
     {
-        var response = await _specialtyService.GetAllSpecialty(pageSize, pageIndex, name);
+        var response = await _specialtyService.GetAllSpecialty(pageSize, pageIndex, name, onlyActive: !User.IsInRole(Roles.Administrator));
         return Ok(response);
     }
 

@@ -30,8 +30,8 @@ public class Doctor : SoftDeletableEntity
         Specialty = specialty;
     }
 
-    /* public void ChangeActiveStatus(bool isActive)
+    public void ChangeActiveStatus(bool isActive)
     {
         IsActive = isActive;
-    } */
+    }
 }

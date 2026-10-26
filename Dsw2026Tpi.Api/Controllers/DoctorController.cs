@@ -20,7 +20,7 @@ public class DoctorController : AppController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll([FromQuery]int pageSize = 10, [FromQuery]int pageIndex = 1, [FromQuery]string? name = null, [FromQuery] Guid? specialtyId = null)
     {
-        var doctors = await _service.GetAll(pageSize, pageIndex, name, specialtyId);
+        var doctors = await _service.GetAll(pageSize, pageIndex, name, specialtyId, onlyActive: !User.IsInRole(Roles.Administrator));
         return Ok(doctors);
     }
 

@@ -18,7 +18,7 @@ public class DoctorService : IDoctorService
         _persistence = persistence;
     }
 
-    public async Task<Pagination<DoctorModel.Response>> GetAll(int pageSize, int pageIndex, string? name = null, Guid? specialtyId = null)
+    public async Task<Pagination<DoctorModel.Response>> GetAll(int pageSize, int pageIndex, string? name = null, Guid? specialtyId = null, bool onlyActive = true)
     {
         ValidationsExtensions.ValidatePagination(pageSize, pageIndex);
 
@@ -32,9 +32,9 @@ public class DoctorService : IDoctorService
                     nameof(specialtyId),
                     "Debe indicar un identificador de especialidad válido.");
 
-        var doctors = await _persistence.Paginate<Doctor, string>(pageSize, pageIndex, 
-            d => d.IsActive && (string.IsNullOrWhiteSpace(name) ||d.Name.Contains(name)) &&
-             (!specialtyId.HasValue || d.SpecialtyId == specialtyId.Value),
+        var doctors = await _persistence.Paginate<Doctor, string>(pageSize, pageIndex,
+            d =>!d.Deleted && (!onlyActive || (d.IsActive && d.Specialty != null && !d.Specialty.Deleted && d.Specialty.IsActive)) && (string.IsNullOrWhiteSpace(name) 
+            || d.Name.Contains(name)) && (!specialtyId.HasValue || d.SpecialtyId == specialtyId.Value), 
             d => d.Name, nameof(Doctor.Specialty));
 
         return doctors.Map(MapResponse);
@@ -90,7 +90,7 @@ public class DoctorService : IDoctorService
                     nameof(toDate),
                     "La fecha final debe ser mayor o igual que la fecha inicial.");
 
-        if (!doctor.IsActive)
+        if (!doctor.IsActive || doctor.Specialty is null || !doctor.Specialty.IsActive)
             return [];
 
         var startDateTime = startDate.ToDateTime(TimeOnly.MinValue);
@@ -135,8 +135,9 @@ public class DoctorService : IDoctorService
     public async Task<DoctorModel.Response> CreateDoctor (DoctorModel.Request request)
     {
         var specialty = await ValidateRequest(request);
-
+        
         var doctor = new Doctor(request.Name, request.LicenseNumber, specialty);
+        doctor.ChangeActiveStatus(request.IsActive ?? true);
 
         await _persistence.Add(doctor);
 
@@ -145,31 +146,43 @@ public class DoctorService : IDoctorService
 
     public async Task<DoctorModel.Response> UpdateDoctor (Guid id, DoctorModel.Request request)
     {
-        var specialty = await ValidateRequest(request);
+        return await _persistence.ExecuteInTransactionAsync<DoctorModel.Response>(async () =>
+        {
+            var specialty = await ValidateRequest(request);
+            var doctor = await GetDoctor(id);
 
-        var doctor = await GetDoctor(id);
+            doctor.UpdateProfile(request.Name, request.LicenseNumber, specialty);
+            
+            if (request.IsActive.HasValue)
+                doctor.ChangeActiveStatus(request.IsActive.Value);
 
-        doctor.UpdateProfile(request.Name, request.LicenseNumber, specialty);
+            await _persistence.Update(doctor);
 
-        await _persistence.Update(doctor);
-
-        return MapResponse(doctor);
+            return MapResponse(doctor);
+        },
+        id);
     }
 
     public async Task DeleteDoctor(Guid id)
     {
-        var doctor = await GetDoctor(id);
+        await _persistence.ExecuteInTransactionAsync<Guid>(async () =>
+        {
+            var doctor = await GetDoctor(id);
+           
+            doctor.SetDeleted();
 
-        doctor.SetDeleted();
+            await _persistence.Update(doctor);
 
-        await _persistence.Update(doctor);
+            return doctor.Id;
+        },
+        id);
     }
 
     #region Private Methods
 
     private async Task<Doctor> GetDoctor(Guid doctorId)
     {
-        return await _persistence.GetById<Doctor>(doctorId)
+        return await _persistence.First<Doctor>(d => d.Id == doctorId && !d.Deleted, nameof(Doctor.Specialty))
             ?? throw new EntityNotFoundException(nameof(Doctor));
     }
     private async Task<Specialty> ValidateRequest (DoctorModel.Request request)
@@ -191,7 +204,7 @@ public class DoctorService : IDoctorService
             d.Id,
             d.Name,
             d.LicenseNumber,
-            new DoctorModel.SpecialtyDto(d.Specialty?.Id, d.Specialty?.Name));
+            new DoctorModel.SpecialtyDto(d.Specialty?.Id, d.Specialty?.Name), d.IsActive);
     }
 
     private static AvailabilityModel.Response MapAvailabilityResponse(AvailabilityRule rule)

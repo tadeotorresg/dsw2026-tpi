@@ -200,7 +200,7 @@ namespace Dsw2026Tpi.Application.Services
                 throw new ValidationException() 
                     .WithDetail(nameof(doctorId), "Debe indicar un DoctorId válido.");
             
-            return await _persistence.GetById<Doctor>(doctorId)
+            return await _persistence.First<Doctor>(d => d.Id == doctorId && !d.Deleted)
                 ?? throw new EntityNotFoundException(nameof(Doctor));
         }
 

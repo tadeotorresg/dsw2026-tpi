@@ -25,13 +25,14 @@ namespace Dsw2026Tpi.Application.Services
             await ValidateUniqueName(request.Name);
 
             var specialty = new Specialty(request.Name, request.Description);
+            specialty.ChangeActiveStatus(request.IsActive ?? true);
 
             await _persistence.Add(specialty);
 
             return MapResponse(specialty);
         }
 
-        public async Task<Pagination<SpecialtyModel.Response>> GetAllSpecialty(int pageSize, int pageIndex, string? name = null)
+        public async Task<Pagination<SpecialtyModel.Response>> GetAllSpecialty(int pageSize, int pageIndex, string? name = null, bool onlyActive = true)
         {
             ValidationsExtensions.ValidatePagination(pageSize, pageIndex);
 
@@ -40,9 +41,8 @@ namespace Dsw2026Tpi.Application.Services
                     .WithDetail(nameof(name), "El filtro por nombre debe tener entre 3 y 100 caracteres.");
             
             var specialties = await _persistence.Paginate<Specialty, string>(pageSize, pageIndex,
-                s => string.IsNullOrWhiteSpace(name) || s.Name.Contains(name),
-                x => x.Name
-            );
+                s => s.Deleted && (!onlyActive || s.IsActive) && (string.IsNullOrWhiteSpace(name) || s.Name.Contains(name)),
+                s => s.Name);
             return specialties.Map(MapResponse);
         }
 
@@ -55,7 +55,10 @@ namespace Dsw2026Tpi.Application.Services
             await ValidateUniqueName(request.Name, specialty.Id);
 
             specialty.UpdateDetails(request.Name, request.Description);
-
+            
+            if (request.IsActive.HasValue)
+                specialty.ChangeActiveStatus(request.IsActive.Value);
+           
             await _persistence.Update(specialty);
 
             return MapResponse(specialty);
@@ -66,8 +69,14 @@ namespace Dsw2026Tpi.Application.Services
            var specialty = await _persistence.GetById<Specialty>(id)
                ?? throw new EntityNotFoundException(nameof(Specialty));
 
+            var associatedDoctors = await _persistence.Count<Doctor>(doctor => doctor.SpecialtyId == id && !doctor.Deleted);
+            var associatedAppointments = await _persistence.Count<Appointment>( appointment => appointment.AvailabilitySlot!.AvailabilityRule!.Doctor!.SpecialtyId == id);
+            
+            if (associatedDoctors > 0 || associatedAppointments > 0)
+                throw new ConflictException("No se puede eliminar una especialidad con médicos o citas asociadas.", "SPECIALTY_IN_USE")
+                    .WithDetail(nameof(id), "La especialidad debe conservarse para sus médicos o citas existentes.");
+            
            specialty.SetDeleted();
-
            await _persistence.Update(specialty);
         }
 
@@ -88,7 +97,8 @@ namespace Dsw2026Tpi.Application.Services
             return new SpecialtyModel.Response(
                 s.Id,
                 s.Name,
-                s.Description);
+                s.Description,
+                s.IsActive);
         }
 
         private async Task ValidateUniqueName(string name, Guid? currentSpecialtyId = null)

@@ -35,14 +35,11 @@ namespace Dsw2026Tpi.Application.Services
                     async () =>
                     {
                         var doctor = await ValidateDoctor(request.DoctorId);
-                        if (!doctor.IsActive)
+                        if (!doctor.IsActive || doctor.Specialty is null || !doctor.Specialty.IsActive)
                         {
-                            throw new ConflictException(
-                                ErrorCodes.APPOINTMENT_CONFLICT,
-                                nameof(ErrorCodes.APPOINTMENT_CONFLICT))
-                                .WithDetail(
-                                    nameof(request.DoctorId),
-                                    "El médico está inactivo y no admite nuevas reservas.");
+                            throw new ConflictException(ErrorCodes.APPOINTMENT_CONFLICT, nameof(ErrorCodes.APPOINTMENT_CONFLICT))
+                                .WithDetail(nameof(request.DoctorId),
+                                    "El médico o su especialidad no están habilitados para nuevas reservas.");
                         }
 
                         var patient = await ValidatePatient(request.Patient!.Dni);
@@ -258,7 +255,7 @@ namespace Dsw2026Tpi.Application.Services
                 throw new ValidationException()
                     .WithDetail(nameof(doctorId),"Debe indicar un DoctorId válido.");
 
-            return await _persistence.GetById<Doctor>(doctorId,nameof(Doctor.Specialty))
+            return await _persistence.First<Doctor>(d => d.Id == doctorId && !d.Deleted, nameof(Doctor.Specialty))
                 ?? throw new EntityNotFoundException(nameof(Doctor));
         }
 

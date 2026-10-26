@@ -4,6 +4,7 @@ public class Specialty : SoftDeletableEntity
 {
     public string Name { get; private set; }
     public string Description { get; private set; }
+    public bool IsActive { get; private set; } = true;
 
     #region Constructor for EF
 #pragma warning disable CS8618
@@ -20,5 +21,9 @@ public class Specialty : SoftDeletableEntity
     {
         Name = name;
         Description = description;
+    }
+    public void ChangeActiveStatus(bool isActive)
+    {
+        IsActive = isActive;
     }
 }
