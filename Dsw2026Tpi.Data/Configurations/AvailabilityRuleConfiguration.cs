@@ -16,7 +16,7 @@ public class AvailabilityRuleConfiguration : IEntityTypeConfiguration<Availabili
             .IsRequired();
 
         builder.HasOne(r => r.Doctor)
-            .WithMany()
+            .WithMany(d => d.Availabilities)
             .HasForeignKey(r => r.DoctorId)
             .OnDelete(DeleteBehavior.Restrict);
 

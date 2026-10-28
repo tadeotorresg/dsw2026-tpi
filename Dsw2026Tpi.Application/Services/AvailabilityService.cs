@@ -48,7 +48,7 @@ namespace Dsw2026Tpi.Application.Services
             var responses = await _persistence.ExecuteInTransactionAsync<IEnumerable<AvailabilityModel.Response>>(
                 async () =>
                     {
-                        await ValidateDoctor(request.DoctorId);
+                        var doctor = await ValidateDoctor(request.DoctorId);
 
                         var today = DateTime.Today;
                         short year = (short)today.Year;
@@ -56,10 +56,10 @@ namespace Dsw2026Tpi.Application.Services
 
                         var holidays = _holidayProvider.GetHolidays(year, month);
 
-                        var periodRules = (await _persistence.GetFiltered<AvailabilityRule>( rule =>
-                        rule.DoctorId == request.DoctorId &&
-                        rule.Year == year &&
-                        rule.Month == month) ?? []) .ToList();
+                        var periodRules = doctor.Availabilities
+                        .Where(rule =>
+                            rule.Year == year &&
+                            rule.Month == month).ToList();
 
                         if (replace && periodRules.Count == 0)
                             throw new EntityNotFoundException(
@@ -68,9 +68,27 @@ namespace Dsw2026Tpi.Application.Services
                         var existingRules = periodRules
                             .Where(rule => !rule.Deleted)
                             .ToList();
-
                         if (!replace)
-                            CheckOverlaps(request.Days, existingRules);
+                        {
+                            foreach (var requested in requestedRules)
+                            {
+                                var isAvailable = doctor.CheckAvailability(
+                                    month,
+                                    year,
+                                    requested.DayOfWeek,
+                                    requested.StartTime,
+                                    requested.EndTime);
+
+                                if (!isAvailable)
+                                {
+                                    throw new ConflictException(ErrorCodes.AVAILABILITY_CONFLICT,
+                                        nameof(ErrorCodes.AVAILABILITY_CONFLICT))
+                                        .WithDetail(nameof(AvailabilityModel.DayRequest.Day),"Ya existe una disponibilidad para el día "
+                                            + DayOfWeekConverter.GetDayName(requested.DayOfWeek)
+                                            + " en el horario solicitado.");
+                                }
+                            }
+                        }
 
                         if (replace)
                         {
@@ -103,8 +121,7 @@ namespace Dsw2026Tpi.Application.Services
 
                             if (rule is null)
                             {
-                                rule = new AvailabilityRule(
-                                    request.DoctorId,
+                                rule = doctor.CreateAvailability(
                                     month,
                                     year,
                                     requested.DayOfWeek,
@@ -177,30 +194,13 @@ namespace Dsw2026Tpi.Application.Services
                 }
             }
         }
-
-        private void CheckOverlaps(List<AvailabilityModel.DayRequest> requests, IEnumerable<AvailabilityRule> existingRules)
-        {
-            foreach (var req in requests)
-            {
-                var parsedDay = (byte)DayOfWeekConverter.Parse(req.Day);
-                var ruleOverlaps = existingRules.Where(r => r.DayOfWeek == parsedDay);
-
-                foreach (var rule in ruleOverlaps)
-                {
-                    if (req.StartTime < rule.EndTime && req.EndTime > rule.StartTime)
-                        throw new ConflictException(ErrorCodes.AVAILABILITY_CONFLICT, nameof(ErrorCodes.AVAILABILITY_CONFLICT))
-                            .WithDetail(nameof(req.Day), $"Ya existe una disponibilidad para el día {req.Day} en el horario solicitado.");
-                }
-            }
-        }
-
         private async Task <Doctor> ValidateDoctor (Guid doctorId)
         {
             if (doctorId == Guid.Empty )
                 throw new ValidationException() 
                     .WithDetail(nameof(doctorId), "Debe indicar un DoctorId válido.");
             
-            return await _persistence.First<Doctor>(d => d.Id == doctorId && !d.Deleted)
+            return await _persistence.First<Doctor>(d => d.Id == doctorId && !d.Deleted, nameof(Doctor.Availabilities))
                 ?? throw new EntityNotFoundException(nameof(Doctor));
         }
 
