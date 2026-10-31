@@ -27,4 +27,12 @@ public class Patient : SoftDeletableEntity
     {
         FullName = fullName;
     }
+    public Appointment CreateAppointment(Guid availabilitySlotId, string reason)
+    {
+        var appointment = new Appointment(availabilitySlotId, Id, reason);
+
+        _appointments.Add(appointment);
+
+        return appointment;
+    }
 }

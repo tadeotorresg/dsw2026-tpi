@@ -70,7 +70,7 @@ namespace Dsw2026Tpi.Application.Services
                         slot.Book();
                         slot.UpdatedAt = DateTime.Now;
 
-                        var appointment = new Appointment(slot.Id, patient.Id, request.Reason!);
+                        var appointment = patient.CreateAppointment(slot.Id, request.Reason!);
 
                         var createdAppointment = await _persistence.Add(appointment);
                         
