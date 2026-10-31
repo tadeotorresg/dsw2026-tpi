@@ -26,6 +26,14 @@ public class AvailabilitySlot : SoftDeletableEntity
         EndTime = endTime;
         Status = SlotStatus.AVAILABLE;
     }
+    public bool IsAvailable()
+    {
+        return !Deleted && Status == SlotStatus.AVAILABLE;
+    }
+    public bool IsInPast(DateTime now)
+    {
+        return SlotDate.Date.Add(StartTime) < now;
+    }
     public void Book() => Status = SlotStatus.BOOKED;
     public void Free() => Status = SlotStatus.AVAILABLE;
     public void Block() => Status = SlotStatus.BLOCKED;

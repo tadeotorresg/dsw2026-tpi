@@ -55,18 +55,17 @@ namespace Dsw2026Tpi.Application.Services
                                 other.EndTime > slot.StartTime &&
                                 (other.Status == SlotStatus.BOOKED || other.Status == SlotStatus.BLOCKED));
                         
-                        if (slot.Status != SlotStatus.AVAILABLE || overlappingSlot is not null)
+                        if (!slot.IsAvailable() || overlappingSlot is not null)
                         { 
                             throw new ConflictException( ErrorCodes.APPOINTMENT_CONFLICT,
                                 nameof(ErrorCodes.APPOINTMENT_CONFLICT))
                                     .WithDetail(nameof(request.AvailabilitySlotId), "Turno no disponible.");
                         }
-                        
-                        var slotDateTime = slot.SlotDate.Date.Add(slot.StartTime);
-                        
-                        if (slotDateTime < DateTime.Now)
+                        if (slot.IsInPast(DateTime.Now))
+                        {
                             throw new ValidationException()
-                            .WithDetail( nameof(request.AvailabilitySlotId), "No se pueden reservar turnos pasados.");
+                                .WithDetail(nameof(request.AvailabilitySlotId), "No se pueden reservar turnos pasados.");
+                        }
 
                         slot.Book();
                         slot.UpdatedAt = DateTime.Now;
