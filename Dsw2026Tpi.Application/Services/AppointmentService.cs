@@ -128,21 +128,15 @@ namespace Dsw2026Tpi.Application.Services
                         if (appointment.Patient!.Dni != dniDelToken)
                             throw new AuthorizationException();
 
-                        if (appointment.Status != AppointmentStatus.BOOKED)
+                        if (!appointment.TryCancel())
+                        {
                             throw new ConflictException(ErrorCodes.INVALID_STATUS,
                                 nameof(ErrorCodes.INVALID_STATUS))
                                 .WithDetail(nameof(appointment.Status), "El turno no está reservado.");
-
-                        appointment.Cancel();
-
-                        var slot = appointment.AvailabilitySlot!;
-
-                        slot.Free();
-                        slot.UpdatedAt = DateTime.Now;
-
+                        }
                         await _persistence.Update(appointment);
 
-                        return slot.Id;
+                        return appointment.AvailabilitySlotId;
                     },
                     doctorId);
 
