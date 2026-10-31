@@ -2,9 +2,13 @@
 
 public class Patient : SoftDeletableEntity
 {
+    private readonly List<Appointment> _appointments =
+    new List<Appointment>();
     public Guid UserId { get; private set; }
     public string Dni {  get; init; }
     public string? FullName { get; private set; }
+    public IReadOnlyCollection<Appointment> Appointments =>
+    _appointments.AsReadOnly();
 
 
     #region Constructor for EF
