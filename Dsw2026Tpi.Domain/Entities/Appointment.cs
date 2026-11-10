@@ -27,10 +27,21 @@ public class Appointment : EntityBase
         Status = AppointmentStatus.BOOKED;
     }
 
-    public void Cancel()
+    public bool TryCancel()
     {
-        CancelledAt = DateTime.Now;
+        if (Status != AppointmentStatus.BOOKED)
+            return false;
+        var slot = AvailabilitySlot
+        ?? throw new InvalidOperationException("Debe cargar el slot asociado para cancelar la cita.");
+        var now = DateTime.Now;
+
+        CancelledAt = now;
         Status = AppointmentStatus.CANCELLED;
+
+        slot.Free();
+        slot.UpdatedAt = now;
+
+        return true;
     }
 
     public void MarkAsAttended()

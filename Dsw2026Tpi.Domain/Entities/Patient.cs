@@ -2,9 +2,13 @@
 
 public class Patient : SoftDeletableEntity
 {
+    private readonly List<Appointment> _appointments =
+    new List<Appointment>();
     public Guid UserId { get; private set; }
     public string Dni {  get; init; }
     public string? FullName { get; private set; }
+    public IReadOnlyCollection<Appointment> Appointments =>
+    _appointments.AsReadOnly();
 
 
     #region Constructor for EF
@@ -22,5 +26,13 @@ public class Patient : SoftDeletableEntity
     public void UpdateProfile (string fullName)
     {
         FullName = fullName;
+    }
+    public Appointment CreateAppointment(Guid availabilitySlotId, string reason)
+    {
+        var appointment = new Appointment(availabilitySlotId, Id, reason);
+
+        _appointments.Add(appointment);
+
+        return appointment;
     }
 }

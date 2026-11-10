@@ -22,7 +22,7 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
             .HasFilter("[Status] = 'BOOKED'");
 
         builder.HasOne(a => a.Patient)
-            .WithMany()
+            .WithMany(p=> p.Appointments)
             .HasForeignKey(a => a.PatientId)
             .OnDelete(DeleteBehavior.Restrict);
 

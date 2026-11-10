@@ -34,5 +34,9 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
         builder.HasQueryFilter(p => !p.Deleted);
 
         builder.Property(d => d.CreatedAt);
+
+        builder.Navigation(p => p.Appointments)
+    .HasField("_appointments")
+    .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }
